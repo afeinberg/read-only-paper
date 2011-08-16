@@ -1,0 +1,252 @@
+This is pdfeTeXk, Version 3.141592-1.21a-2.2 (Web2C 7.5.4) (format=pdflatex 2010.8.25)  16 AUG 2011 12:27
+entering extended mode
+ file:line:error style messages enabled.
+**eurosys-sample.tex
+(./eurosys-sample.tex
+LaTeX2e <2003/12/01>
+Babel <v3.8d> and hyphenation patterns for american, french, german, ngerman, b
+ahasa, basque, bulgarian, catalan, croatian, czech, danish, dutch, esperanto, e
+stonian, finnish, greek, icelandic, irish, italian, latin, magyar, norsk, polis
+h, portuges, romanian, russian, serbian, slovak, slovene, spanish, swedish, tur
+kish, ukrainian, nohyphenation, loaded.
+(./sigplanconf.cls
+Document Class: sigplanconf 2010/05/24 v2.4 ACM SIGPLAN Proceedings
+\@numheaddepth=\count79
+(/opt/local/share/texmf-dist/tex/latex/base/article.cls
+Document Class: article 2004/02/16 v1.4f Standard LaTeX document class
+(/opt/local/share/texmf-dist/tex/latex/base/size10.clo
+File: size10.clo 2004/02/16 v1.4f Standard LaTeX file (size option)
+)
+\c@part=\count80
+\c@section=\count81
+\c@subsection=\count82
+\c@subsubsection=\count83
+\c@paragraph=\count84
+\c@subparagraph=\count85
+\c@figure=\count86
+\c@table=\count87
+\abovecaptionskip=\skip41
+\belowcaptionskip=\skip42
+\bibindent=\dimen102
+)
+\standardtextwidth=\dimen103
+\standardvspace=\skip43
+
+Using natbib package with 'authoryear' citation style.
+(/opt/local/share/texmf-dist/tex/latex/natbib/natbib.sty
+Package: natbib 2003/06/06 7.1 (PWD)
+\bibhang=\skip44
+\bibsep=\skip45
+LaTeX Info: Redefining \cite on input line 518.
+\c@NAT@ctr=\count88
+)
+\@sectionaboveskip=\skip46
+\@sectionbelowskip=\skip47
+\@subsectionaboveskip=\skip48
+\@subsectionbelowskip=\skip49
+\@paragraphaboveskip=\skip50
+\@authorcount=\count89
+\@titlenotecount=\count90
+\@titlenotetext=\toks14
+\@fnmark=\toks15
+\@authori=\count91
+\@measbox=\box26
+)
+(/opt/local/share/texmf-dist/tex/latex/amsmath/amsmath.sty
+Package: amsmath 2000/07/18 v2.13 AMS math features
+\@mathmargin=\skip51
+
+For additional information on amsmath, use the `?' option.
+(/opt/local/share/texmf-dist/tex/latex/amsmath/amstext.sty
+Package: amstext 2000/06/29 v2.01
+
+(/opt/local/share/texmf-dist/tex/latex/amsmath/amsgen.sty
+File: amsgen.sty 1999/11/30 v2.0
+\@emptytoks=\toks16
+\ex@=\dimen104
+))
+(/opt/local/share/texmf-dist/tex/latex/amsmath/amsbsy.sty
+Package: amsbsy 1999/11/29 v1.2d
+\pmbraise@=\dimen105
+)
+(/opt/local/share/texmf-dist/tex/latex/amsmath/amsopn.sty
+Package: amsopn 1999/12/14 v2.01 operator names
+)
+\inf@bad=\count92
+LaTeX Info: Redefining \frac on input line 211.
+\uproot@=\count93
+\leftroot@=\count94
+LaTeX Info: Redefining \overline on input line 307.
+\classnum@=\count95
+\DOTSCASE@=\count96
+LaTeX Info: Redefining \ldots on input line 379.
+LaTeX Info: Redefining \dots on input line 382.
+LaTeX Info: Redefining \cdots on input line 467.
+\Mathstrutbox@=\box27
+\strutbox@=\box28
+\big@size=\dimen106
+LaTeX Font Info:    Redeclaring font encoding OML on input line 567.
+LaTeX Font Info:    Redeclaring font encoding OMS on input line 568.
+\macc@depth=\count97
+\c@MaxMatrixCols=\count98
+\dotsspace@=\muskip10
+\c@parentequation=\count99
+\dspbrk@lvl=\count100
+\tag@help=\toks17
+\row@=\count101
+\column@=\count102
+\maxfields@=\count103
+\andhelp@=\toks18
+\eqnshift@=\dimen107
+\alignsep@=\dimen108
+\tagshift@=\dimen109
+\tagwidth@=\dimen110
+\totwidth@=\dimen111
+\lineht@=\dimen112
+\@envbody=\toks19
+\multlinegap=\skip52
+\multlinetaggap=\skip53
+\mathdisplay@stack=\toks20
+LaTeX Info: Redefining \[ on input line 2666.
+LaTeX Info: Redefining \] on input line 2667.
+)
+(./eurosys-sample.aux)
+\openout1 = `eurosys-sample.aux'.
+
+LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 10.
+LaTeX Font Info:    ... okay on input line 10.
+LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 10.
+LaTeX Font Info:    ... okay on input line 10.
+LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 10.
+LaTeX Font Info:    ... okay on input line 10.
+LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 10.
+LaTeX Font Info:    ... okay on input line 10.
+LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 10.
+LaTeX Font Info:    ... okay on input line 10.
+LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 10.
+LaTeX Font Info:    ... okay on input line 10.
+LaTeX Font Info:    Try loading font information for OT1+ptm on input line 10.
+ (/opt/local/share/texmf-dist/tex/latex/psnfss/ot1ptm.fd
+File: ot1ptm.fd 2001/06/04 font definitions for OT1/ptm.
+)
+LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <17.28> not available
+(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 33.
+LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <12> not available
+(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 35.
+LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <10> not available
+(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 40.
+LaTeX Font Info:    Font shape `OT1/ptm/bx/it' in size <10> not available
+(Font)              Font shape `OT1/ptm/b/it' tried instead on input line 40.
+
+Package natbib Warning: Citation `1' on page 1 undefined on input line 50.
+
+
+Package natbib Warning: Citation `2' on page 1 undefined on input line 50.
+
+
+Package natbib Warning: Citation `3' on page 1 undefined on input line 50.
+
+
+Package natbib Warning: Citation `4' on page 1 undefined on input line 50.
+
+
+Package natbib Warning: Citation `5' on page 1 undefined on input line 54.
+
+
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
+ [1{/opt/local/share/texmf-var/fonts/map/pdftex/updmap/pdftex.map}
+
+
+]
+
+Package natbib Warning: Citation `6 - http://dev.mysql.com/doc/refman/5.5/en/op
+timizing-myisam-bulk-data-loading.html' on page 2 undefined on input line 58.
+
+
+Package natbib Warning: Citation `7 - http://dev.mysql.com/doc/refman/5.5/en/my
+isampack.html' on page 2 undefined on input line 58.
+
+
+Package natbib Warning: Citation `The Case for Shared Nothing Database' on page
+ 2 undefined on input line 60.
+
+
+Package natbib Warning: Citation `8 - Efﬁcient Bulk Insertion into a Distribu
+ted Ordered Table' on page 2 undefined on input line 60.
+
+
+Package natbib Warning: Citation `9 - PNUTS paper' on page 2 undefined on input
+ line 60.
+
+
+Package natbib Warning: Citation `A Batch of PNUTS: Experiences Connecting Clou
+d Batch and Serving Systems' on page 2 undefined on input line 60.
+
+
+Package natbib Warning: Citation `10 - Katta link' on page 2 undefined on input
+ line 62.
+
+
+Package natbib Warning: Citation `Distributed Indexing for Semantic Search' on 
+page 2 undefined on input line 62.
+
+
+Package natbib Warning: Citation `11 - Distributed Indexing of Web Scale Datase
+ts for the Cloud' on page 2 undefined on input line 62.
+
+
+Package natbib Warning: Citation `Parallel Bulk Insertion for Large-scale Analy
+tics Applications' on page 2 undefined on input line 62.
+
+
+Package natbib Warning: Citation `http://www.datastax.com/dev/blog/bulk-loading
+' on page 2 undefined on input line 62.
+
+
+Package natbib Warning: Citation `http://www2.parc.com/csl/projects/bayou/pubs/
+uist-97/Bayou.pdf' on page 2 undefined on input line 66.
+
+[2]
+LaTeX Font Info:    Try loading font information for OMS+ptm on input line 101.
+
+ (/opt/local/share/texmf-dist/tex/latex/psnfss/omsptm.fd
+File: omsptm.fd 
+)
+LaTeX Font Info:    Font shape `OMS/ptm/m/n' in size <9> not available
+(Font)              Font shape `OMS/cmsy/m/n' tried instead on input line 101.
+
+
+Package natbib Warning: Citation `An adaptation of a root finding method to sea
+rching ordered disk files' on page 3 undefined on input line 124.
+
+
+Underfull \vbox (badness 2158) has occurred while \output is active []
+
+
+No file eurosys-sample.bbl.
+
+Package natbib Warning: There were undefined citations.
+
+[3] (./eurosys-sample.aux) ) 
+Here is how much of TeX's memory you used:
+ 1339 strings out of 94500
+ 15728 string characters out of 1174973
+ 70863 words of memory out of 1000000
+ 4545 multiletter control sequences out of 10000+50000
+ 20805 words of font info for 39 fonts, out of 500000 for 2000
+ 580 hyphenation exceptions out of 1000
+ 31i,4n,34p,1497b,212s stack positions out of 1500i,500n,5000p,200000b,5000s
+PDF statistics:
+ 34 PDF objects out of 300000
+ 0 named destinations out of 131072
+ 1 words of extra memory for PDF output out of 65536
+</opt/local/share/texmf-dist/fonts/type1/bluesky/cm
+/cmsy9.pfb></opt/local/share/texmf-dist/fonts/type1/bluesky/cm/cmr10.pfb></opt/
+local/share/texmf-dist/fonts/type1/bluesky/cm/cmmi10.pfb>{/opt/local/share/texm
+f-dist/fonts/enc/dvips/psnfss/8r.enc}</opt/local/share/texmf-dist/fonts/type1/u
+rw/times/utmri8a.pfb></opt/local/share/texmf-dist/fonts/type1/urw/times/utmbi8a
+.pfb></opt/local/share/texmf-dist/fonts/type1/bluesky/cm/cmss10.pfb></opt/local
+/share/texmf-dist/fonts/type1/urw/times/utmr8a.pfb></opt/local/share/texmf-dist
+/fonts/type1/urw/times/utmb8a.pfb>
+Output written on eurosys-sample.pdf (3 pages, 83163 bytes).
