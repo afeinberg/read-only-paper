@@ -1,4 +1,4 @@
-This is pdfeTeXk, Version 3.141592-1.21a-2.2 (Web2C 7.5.4) (format=pdflatex 2010.8.25)  16 AUG 2011 12:34
+This is pdfeTeXk, Version 3.141592-1.21a-2.2 (Web2C 7.5.4) (format=pdflatex 2010.8.25)  24 AUG 2011 11:02
 entering extended mode
  file:line:error style messages enabled.
 **voldemort.tex
@@ -52,202 +52,69 @@ LaTeX Info: Redefining \cite on input line 518.
 \@authori=\count91
 \@measbox=\box26
 )
-(/opt/local/share/texmf-dist/tex/latex/amsmath/amsmath.sty
-Package: amsmath 2000/07/18 v2.13 AMS math features
-\@mathmargin=\skip51
+(/opt/local/share/texmf-dist/tex/latex/graphics/graphicx.sty
+Package: graphicx 1999/02/16 v1.0f Enhanced LaTeX Graphics (DPC,SPQR)
 
-For additional information on amsmath, use the `?' option.
-(/opt/local/share/texmf-dist/tex/latex/amsmath/amstext.sty
-Package: amstext 2000/06/29 v2.01
+(/opt/local/share/texmf-dist/tex/latex/graphics/keyval.sty
+Package: keyval 1999/03/16 v1.13 key=value parser (DPC)
+\KV@toks@=\toks16
+)
+(/opt/local/share/texmf-dist/tex/latex/graphics/graphics.sty
+Package: graphics 2001/07/07 v1.0n Standard LaTeX Graphics (DPC,SPQR)
 
-(/opt/local/share/texmf-dist/tex/latex/amsmath/amsgen.sty
-File: amsgen.sty 1999/11/30 v2.0
-\@emptytoks=\toks16
-\ex@=\dimen104
+(/opt/local/share/texmf-dist/tex/latex/graphics/trig.sty
+Package: trig 1999/03/16 v1.09 sin cos tan (DPC)
+)
+(/opt/local/share/texmf-dist/tex/latex/graphics/graphics.cfg
+File: graphics.cfg 2005/02/03 v1.3 graphics configuration of teTeX/TeXLive
+)
+Package graphics Info: Driver file: pdftex.def on input line 80.
+
+(/opt/local/share/texmf-dist/tex/latex/graphics/pdftex.def
+File: pdftex.def 2002/06/19 v0.03k graphics/color for pdftex
+\Gread@gobject=\count92
 ))
-(/opt/local/share/texmf-dist/tex/latex/amsmath/amsbsy.sty
-Package: amsbsy 1999/11/29 v1.2d
-\pmbraise@=\dimen105
+\Gin@req@height=\dimen104
+\Gin@req@width=\dimen105
 )
-(/opt/local/share/texmf-dist/tex/latex/amsmath/amsopn.sty
-Package: amsopn 1999/12/14 v2.01 operator names
-)
-\inf@bad=\count92
-LaTeX Info: Redefining \frac on input line 211.
-\uproot@=\count93
-\leftroot@=\count94
-LaTeX Info: Redefining \overline on input line 307.
-\classnum@=\count95
-\DOTSCASE@=\count96
-LaTeX Info: Redefining \ldots on input line 379.
-LaTeX Info: Redefining \dots on input line 382.
-LaTeX Info: Redefining \cdots on input line 467.
-\Mathstrutbox@=\box27
-\strutbox@=\box28
-\big@size=\dimen106
-LaTeX Font Info:    Redeclaring font encoding OML on input line 567.
-LaTeX Font Info:    Redeclaring font encoding OMS on input line 568.
-\macc@depth=\count97
-\c@MaxMatrixCols=\count98
-\dotsspace@=\muskip10
-\c@parentequation=\count99
-\dspbrk@lvl=\count100
-\tag@help=\toks17
-\row@=\count101
-\column@=\count102
-\maxfields@=\count103
-\andhelp@=\toks18
-\eqnshift@=\dimen107
-\alignsep@=\dimen108
-\tagshift@=\dimen109
-\tagwidth@=\dimen110
-\totwidth@=\dimen111
-\lineht@=\dimen112
-\@envbody=\toks19
-\multlinegap=\skip52
-\multlinetaggap=\skip53
-\mathdisplay@stack=\toks20
-LaTeX Info: Redefining \[ on input line 2666.
-LaTeX Info: Redefining \] on input line 2667.
-) (./voldemort.aux)
-\openout1 = `voldemort.aux'.
 
-LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 10.
-LaTeX Font Info:    ... okay on input line 10.
-LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 10.
-LaTeX Font Info:    ... okay on input line 10.
-LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 10.
-LaTeX Font Info:    ... okay on input line 10.
-LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 10.
-LaTeX Font Info:    ... okay on input line 10.
-LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 10.
-LaTeX Font Info:    ... okay on input line 10.
-LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 10.
-LaTeX Font Info:    ... okay on input line 10.
-LaTeX Font Info:    Try loading font information for OT1+ptm on input line 10.
+! LaTeX Error: File `algorithm2e.sty' not found.
 
-(/opt/local/share/texmf-dist/tex/latex/psnfss/ot1ptm.fd
-File: ot1ptm.fd 2001/06/04 font definitions for OT1/ptm.
-)
-LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <17.28> not available
-(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 33.
-LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <12> not available
-(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 35.
-LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <10> not available
-(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 40.
-LaTeX Font Info:    Font shape `OT1/ptm/bx/it' in size <10> not available
-(Font)              Font shape `OT1/ptm/b/it' tried instead on input line 40.
+Type X to quit or <RETURN> to proceed,
+or enter new name. (Default extension: sty)
 
+Enter file name: 
+./voldemort.tex:9: Emergency stop.
+<read *> 
+         
+\@missingfileerror ...obal \read \m@ne to\@gtempa 
+                                                  }\ifx \@gtempa \@empty \el...
+<argument> ...singfileerror \@currname \@currext }
+                                                  \let \@unprocessedoptions ...
 
-Package natbib Warning: Citation `1' on page 1 undefined on input line 50.
+\@secondoftwo #1#2->#2
+                      
+\reserved@a ... \@undefined \@unprocessedoptions }
+                                                   \@ifl@ter \@currext {algo...
 
+\reserved@a ...ions algorithm2e[][]\@pkgextension 
+                                                  \relax 
+...
+l.9 \usepackage
+               {amsmath}^^M
+*** (cannot \read from terminal in nonstop modes)
 
-Package natbib Warning: Citation `2' on page 1 undefined on input line 50.
-
-
-Package natbib Warning: Citation `3' on page 1 undefined on input line 50.
-
-
-Package natbib Warning: Citation `4' on page 1 undefined on input line 50.
-
-
-Package natbib Warning: Citation `5' on page 1 undefined on input line 54.
-
-
-Underfull \vbox (badness 10000) has occurred while \output is active []
-
- [1{/opt/local/share/texmf-var/fonts/map/pdftex/updmap/pdftex.map}
-
-
-]
-
-Package natbib Warning: Citation `6 - http://dev.mysql.com/doc/refman/5.5/en/op
-timizing-myisam-bulk-data-loading.html' on page 2 undefined on input line 58.
-
-
-Package natbib Warning: Citation `7 - http://dev.mysql.com/doc/refman/5.5/en/my
-isampack.html' on page 2 undefined on input line 58.
-
-
-Package natbib Warning: Citation `The Case for Shared Nothing Database' on page
- 2 undefined on input line 60.
-
-
-Package natbib Warning: Citation `8 - Efﬁcient Bulk Insertion into a Distribu
-ted Ordered Table' on page 2 undefined on input line 60.
-
-
-Package natbib Warning: Citation `9 - PNUTS paper' on page 2 undefined on input
- line 60.
-
-
-Package natbib Warning: Citation `A Batch of PNUTS: Experiences Connecting Clou
-d Batch and Serving Systems' on page 2 undefined on input line 60.
-
-
-Package natbib Warning: Citation `10 - Katta link' on page 2 undefined on input
- line 62.
-
-
-Package natbib Warning: Citation `Distributed Indexing for Semantic Search' on 
-page 2 undefined on input line 62.
-
-
-Package natbib Warning: Citation `11 - Distributed Indexing of Web Scale Datase
-ts for the Cloud' on page 2 undefined on input line 62.
-
-
-Package natbib Warning: Citation `Parallel Bulk Insertion for Large-scale Analy
-tics Applications' on page 2 undefined on input line 62.
-
-
-Package natbib Warning: Citation `http://www.datastax.com/dev/blog/bulk-loading
-' on page 2 undefined on input line 62.
-
-
-Package natbib Warning: Citation `http://www2.parc.com/csl/projects/bayou/pubs/
-uist-97/Bayou.pdf' on page 2 undefined on input line 66.
-
-[2]
-LaTeX Font Info:    Try loading font information for OMS+ptm on input line 101.
-
- (/opt/local/share/texmf-dist/tex/latex/psnfss/omsptm.fd
-File: omsptm.fd 
-)
-LaTeX Font Info:    Font shape `OMS/ptm/m/n' in size <9> not available
-(Font)              Font shape `OMS/cmsy/m/n' tried instead on input line 101.
-
-
-Package natbib Warning: Citation `An adaptation of a root finding method to sea
-rching ordered disk files' on page 3 undefined on input line 124.
-
-
-Underfull \vbox (badness 2158) has occurred while \output is active []
-
-
-No file voldemort.bbl.
-
-Package natbib Warning: There were undefined citations.
-
-[3] (./voldemort.aux) ) 
+ 
 Here is how much of TeX's memory you used:
- 1339 strings out of 94500
- 15683 string characters out of 1174973
- 70863 words of memory out of 1000000
- 4545 multiletter control sequences out of 10000+50000
- 20805 words of font info for 39 fonts, out of 500000 for 2000
+ 949 strings out of 94500
+ 11025 string characters out of 1174973
+ 62002 words of memory out of 1000000
+ 4182 multiletter control sequences out of 10000+50000
+ 3640 words of font info for 14 fonts, out of 500000 for 2000
  580 hyphenation exceptions out of 1000
- 31i,4n,34p,1492b,212s stack positions out of 1500i,500n,5000p,200000b,5000s
+ 31i,0n,34p,214b,36s stack positions out of 1500i,500n,5000p,200000b,5000s
 PDF statistics:
- 34 PDF objects out of 300000
+ 0 PDF objects out of 300000
  0 named destinations out of 131072
  1 words of extra memory for PDF output out of 65536
-</opt/local/share/texmf-dist/fonts/type1/bluesky/cm/cmsy
-9.pfb></opt/local/share/texmf-dist/fonts/type1/bluesky/cm/cmr10.pfb></opt/local
-/share/texmf-dist/fonts/type1/bluesky/cm/cmmi10.pfb>{/opt/local/share/texmf-dis
-t/fonts/enc/dvips/psnfss/8r.enc}</opt/local/share/texmf-dist/fonts/type1/urw/ti
-mes/utmri8a.pfb></opt/local/share/texmf-dist/fonts/type1/urw/times/utmbi8a.pfb>
-</opt/local/share/texmf-dist/fonts/type1/bluesky/cm/cmss10.pfb></opt/local/shar
-e/texmf-dist/fonts/type1/urw/times/utmr8a.pfb></opt/local/share/texmf-dist/font
-s/type1/urw/times/utmb8a.pfb>
-Output written on voldemort.pdf (3 pages, 83161 bytes).
+No pages of output.
