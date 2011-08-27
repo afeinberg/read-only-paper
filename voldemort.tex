@@ -21,15 +21,18 @@
 %\subtitle{Subtitle Text, if any}
 
 % For double-blind reviewing:
-\authorinfo{Blah}
+\authorinfo{Roshan Sumbaly}
            {LinkedIn Corp}
-           {blah@linkedin.com}
-\authorinfo{Blah}
+           {rsumbaly@linkedin.com}
+\authorinfo{Jay Kreps}
            {LinkedIn Corp}
-           {blah@linkedin.com}
-\authorinfo{Blah}
+           {jkreps@linkedin.com}
+\authorinfo{Bhupesh Bansal}
+		   {Groupon}
+           {bbansal@groupon.com}
+\authorinfo{Sam Shah}
            {LinkedIn Corp}
-           {blah@linkedin.com}
+           {sashah@linkedin.com}
 
 
 				
@@ -83,7 +86,7 @@ From an architecture perspective, Voldemort falls into the league of many previo
 
 Before we start let us define some of the concepts and terms we will use in this paper. Voldemort \emph{cluster} can contain multiple \emph{nodes} ( or \emph{servers} ) . Each server has a unique id associated with it. All the nodes in the cluster store the same number of \emph{stores} which correspond to database tables. General usage patterns have shown that a site-facing feature may map to either one store or multiple stores. For example, a feature dealing with group recommendation may map to two stores - one storing member id to recommended group ids and second storing a group id to their corresponding description. Every store has a list of configurable parameters:
 \begin{itemize}
-	\item \emph {Replication factor} - Number of servers onto which each key-value tuple is replicated 
+	\item \emph {Replication factor} - Number of servers onto which each key-value tuple is replicated. 
 	\item \emph {Required reads} - Number of servers which we read from in parallel during a $get()$ before declaring a success
 	\item \emph {Required writes} - Number of server responses we block for before declaring success during a $put()$
 	\item \emph {Key/Value serializer and compression} - We can different serialization format for the key and value. Voldemort supports various serialization formats - some of which include Avro, Protocol buffers, Thrift and Custom binary JSON. Also we support per-tuple based compression which can be applied to key and/or value. All these are invoked only on the client side while the server only deals with byte arrays. The exception to this is a relatively new feature called `server side transforms', which has been discussed further below. 
@@ -130,9 +133,9 @@ This first two functions are simple except we version every tuple with a vector 
 
 Before we talk about conflict resolution it is important we understand how routing and replica assignment works. Since Voldemort can be thought of as a massive hash table we need a way to partition the data across the multiple servers. The best partitioning implementation would be one which would split the `hot' set of data into minute chunks and spread them across such that they fit in memory on the individual servers. Also server failures, maintenance or just being overloaded are common scenarios. In such cases we definitely don't want our clients to stop serving data. This motivates the need to also replicate the data onto multiple servers. 
 
-The Dynamo paper solved these problem by using `virtual nodes' along with consistent hashing. The initial approach they took was to visualize the integer hash values as a ring beginning at 0 and circling around to max value ( in case of MD5, 128 bits = 2$^{128}$-1 ). Then each node is assigned an integer which is in turn hashed ( using MD5 ) into this ring multiple times ( each location of it is called a token ). Then each node becomes responsible for the region between its token and the predecessor token ( belonging to another node ) on the ring. A key is assigned to a node by hashing the key to yield its position in the ring and then jumping the ring clockwise to find the first token ( and corresponding node ) with a greater hash value. Similarly the replicas are decided by jumping further till you find `replication factor' ( $N$ ) number of tokens belonging to different nodes. This list of nodes is called the `preference list' for the key. This consistent hashing approach has the advantage that if a node goes down the affected keys are only ones hashed to regions close to the tokens belonging to the affected node. The disadvantage is that we may result in unequal key ranges because the uneven hashing of the tokens thereby resulting in a skew. 
+The Dynamo paper solved these problem by using `virtual nodes' along with consistent hashing. The initial approach they took was to visualize the integer hash values as a ring beginning at 0 and circling around to max value ( in case of MD5, 128 bits = 2$^{128}$-1 ). Then each node is assigned an integer which is in turn hashed ( using MD5 ) into this ring multiple times ( each location of it is called a token ). Then each node becomes responsible for the region between its token and the predecessor token ( belonging to another node ) on the ring. A key is assigned to a node by hashing the key to yield its position in the ring and then jumping the ring clockwise to find the first token ( and corresponding node ) with a greater hash value. Similarly the replicas are decided by jumping further till you find `replication factor' ( \verb=N= ) number of tokens belonging to different nodes. This list of nodes is called the `preference list' for the key. This consistent hashing approach has the advantage that if a node goes down the affected keys are only ones hashed to regions close to the tokens belonging to the affected node. The disadvantage is that we may result in unequal key ranges because the uneven hashing of the tokens thereby resulting in a skew. 
 
-To solve this problem the better approach is to instead split the hash ring into equal size `partitions' and then assign these partitions to nodes. This ring is shared by all the stores which means changes in the ring require us to change all the stores. To generate the preference list we need to first hash the key to a partition and then continue jumping the ring clockwise till we find $N$-1 other partitions belonging to different nodes. This equal sized range base approach helps solve the imbalanced key range problem. It also indirectly helps in data-management ( as further discussed in Section \ref{sec:read_only:data_cycle:rebalancing} ) since having segregated logical file groups for a partition can help with rebalancing. 
+To solve this problem the better approach is to instead split the hash ring into equal size `partitions' and then assign these partitions to nodes. This ring is shared by all the stores which means changes in the ring require us to change all the stores. To generate the preference list we need to first hash the key to a partition and then continue jumping the ring clockwise till we find \verb=N=-1 other partitions belonging to different nodes. This equal sized range base approach helps solve the imbalanced key range problem. It also indirectly helps in data-management ( as further discussed in Section \ref{sec:read_only:data_cycle:rebalancing} ) since having segregated logical file groups for a partition can help with rebalancing. 
 
 Since our routing layer is customizable it was easy to plug in another variant of the above consistent hashing algorithm to support routing in multiple data-center environment. For the same we start by grouping nodes into logical clusters that we call `zones'. A zone in the real world can be a data-center, a rack or just a group of nodes close together. Besides this we have a `zone proximity list' which contains information regarding zone distances ( For example, Zone A is closer to Zone B than Zone C ). Now we provide the user the ability to decide how many replicas they want per zone and then while generating the preference list jump the ring to find partitions belonging to different nodes and zones. Once the routing module generates the preference list it reorders it depending on the proximity list of the zone it is present in. This enables us to make sure requests first go to local zones instead of remote zones. 
 
@@ -152,7 +155,7 @@ Figure \ref{hash} is an example of how the two routing strategies would generate
 
 In distributed systems network partitions are common. In such scenarios if you are updating various replicas of the same key it becomes very essential that we have some form of versioning in order to resolve conflicts. In particular these versions should be able to detect overwrites and also allow us to detect conflicts. 
 
-For the same we use the concept of vector clocks \cite{Time, clocks, and the ordering of events in a distributed system}. A vector clock keeps a counter for each writing server, and allows us to calculate when two versions are in conflict and when one version succeeds or precedes another. In practice this is a list of node id and counter pair. These counters are incremented depending on which node acts as the pseudo-master for a request. For example,  $[1:10,2:3]$ signifies that node id 1 was master for this replica 10 times while node id 2 was 3 times. The use of vector clocks allows us to support some form of optimistic locking on the client side. For example, if two clients both try to update the same key with the same vector clock only one of them will succeed while the other will be thrown a special error. This special error can then trigger the client to do the same $get$ and $put$ operation again some number of times. We call this `applyUpdate' and have seen its usage in various applications that require a `read, modify, write if no change' loop ( Eg. Counters )
+For the same we use the concept of vector clocks \cite{Time, clocks, and the ordering of events in a distributed system}. A vector clock keeps a counter for each writing server, and allows us to calculate when two versions are in conflict and when one version succeeds or precedes another. In practice this is a list of node id and counter pair. These counters are incremented depending on which node acts as the pseudo-master for a request. For example,  $[1:10,2:3]$ signifies that node id 1 was master for this replica 10 times while node id 2 was 3 times. The use of vector clocks allows us to support some form of optimistic locking on the client side. For example, if two clients both try to update the same key with the same vector clock only one of them will succeed while the other will be thrown a special error. This special error can then trigger the client to do the same $get$ and $put$ operation again some number of times. We call this $applyUpdate$ and have seen its usage in various applications that require a `read, modify, write if no change' loop ( Eg. counters )
 
 % ========================== SYSTEM ARCHITECTURE - SYSTEM COMPONENTS - CONSISTENCY MECHANISM  ==========================================
 
@@ -243,7 +246,7 @@ The following diagram is the structure of our storage engine's data and index fi
 \end{figure}
 
 
-We split our data into multiple chunks where every chunk is a pair of data and index file. There are two reasons to split the data into multiple chunks - (a) parallelism achieved on the Hadoop side (b) limitation of Java to memory map files upto a maximum of 2 GB. We build multiple chunks for every partition-replica bucket. Building chunks at this granularity helps with rebalancing, more about which we will explain in the following subsections. We have set a standard naming convention for all our chunk files. It follows the pattern $<partition\,id>\_<replica\,type>\_<chunk\,id>.data|index$, where $partition\,id$ is the id of the primary partition and $replica\,type$ is a number between 0 to `replication factor'-1. Once a key hashes to a particular node, we classify it into the correct $partition\,id$ + $replica\,type$ bucket. For example the key in Figure \ref{hash}, present in a store using consistent hashing, would fall into the buckets 5\_0 ( on node 2 ) and 5\_1 ( on node 0 ). 
+We split our data into multiple chunks where every chunk is a pair of data and index file. There are two reasons to split the data into multiple chunks - (a) parallelism achieved on the Hadoop side (b) limitation of Java to memory map files upto a maximum of 2 GB. We build multiple chunks for every partition-replica bucket. Building chunks at this granularity helps with rebalancing, more about which we will explain in the following subsections. We have set a standard naming convention for all our chunk files. It follows the pattern \verb=<partition id>_<replica id>_<chunk id>.= \verb=<data or index>=, where \verb=partition id= is the id of the primary partition and \verb=replica id= is a number between 0 to `replication factor'-1. Once a key hashes to a particular node, we classify it into the correct \verb=partition id= + \verb=replica id= bucket. For example the key in Figure \ref{hash}, present in a store using consistent hashing, would fall into the buckets 11\_0 ( on node 2 ) and 11\_1 ( on node 0 ). 
 
 We then take all the tuples in this bucket and split it up into multiple smaller chunks. The table below shows the various bucket names ( where every bucket will contain multiple chunks and each chunk will in turn contain an index and data file ) for a store with consistent hash routing and replication factor 2. This assumes that the cluster has the same partition ring topology as shown in Figure \ref{hash}. This bucket granularity was definitely not present in our first iteration since we have initially started by defining a bucket to be only on a per node basis ( i.e. multiple chunks stored on a node with no knowledge about partitions ). Over time we realized that breaking up the bucket into smaller granularity would help rebalancing. We will describe this in more details in Section \ref{sec:read_only:data_cycle:rebalancing}. 
 
@@ -251,9 +254,9 @@ We then take all the tuples in this bucket and split it up into multiple smaller
     \begin{tabular}{ | c | c | }
     \hline
     Node Id & Chunk files \\ \hline
-    0 &  0\_0, 3\_0, 6\_0,      2\_1, 5\_1,	8\_1	\\
-   1 &   1\_0, 4\_0, 7\_0,      0\_1, 3\_1, 6\_1		\\
-   2 &    2\_0, 5\_0, 8\_0,     1\_1, 4\_1, 7\_1		\\
+    0 &  0\_0, 3\_0, 6\_0, 9\_0,      2\_1, 5\_1, 8\_1, 11\_1	\\
+   1 &   1\_0, 4\_0, 7\_0, 10\_0,      0\_1, 3\_1, 6\_1, 9\_1		\\
+   2 &    2\_0, 5\_0, 8\_0, 11\_0,    1\_1, 4\_1, 7\_1, 10\_1		\\
 \hline
     \end{tabular}
 \end{center}
@@ -261,9 +264,9 @@ We then take all the tuples in this bucket and split it up into multiple smaller
 
 The index file is a compact structure containing sorted upper 8 bytes of the MD5 of the key followed by the 4 byte offset of the corresponding value in the data file. The primary reason to go for this simple sorted structure, in comparison to various previous complicated page aware structures described in literature, was to keep the build process simple. Since we wanted to leverage Hadoop for our index construction we had to face the inherent limitation that generally mapper and reducer tasks do not have much memory. Building complicated structures then would require us to explore various fancy external tree building functions thereby making the process very error prone. Preliminary tests also showed that the index files were generally order of magnitude smaller than the data files. Hence we could safely assume that they would fit into page cache easily. 
 
-We had initially started by using all 16 bytes of the MD5 of the key in the index file. But over time as we started on-boarding various new stores we started getting performance problem. This was happening because having lots of stores was resulting in stamping on each others pages in the page cache. To alleviate this problem we needed to cut down on the amount of data being memory mapped. This could be achieved by cutting down on the number of bytes of the MD5 of the key and accepting collisions in the data file. Then the next important question was, how many bytes do we trim down the key to? This can easily be mapped to birthday paradox which says that if we want to retrieve $n$ random integers from a uniform distribution of range $[1, x]$, the probability that at least 2 numbers are the same is  $(1 - e^{\frac{-n(n-1)}{2x}})$. Mapping this to our read-only stores scenario, say our read-only store is saving recommendation for our 120 million member user base. So $n$ = 120 million and $x$ = $2^{128}$ ( 16 bytes ) gives us a probability of collision to be close to 0. Decreasing this to say 4 bytes ( i.e. 32 bit ) gave a high probability of $(1 - e^{\frac{(-120*10^{6} * ( 120*10^{6} - 1)}{2 * 2^{32}}}) \sim 1$. But if we instead cut it by half to 8 bytes ( i.e. 64 bits ) we get a very low probability of $(1 - e^{\frac{(-120*10^{6} * (120*10^{6} - 1)} { 2 * 2^{64}}}) \sim 3.9024e^{-04}$. The probability of more than one collision is even smaller. In conclusion, we managed to cut down the memory mapped data by 40\% but now had to (a) save the keys in the data file to use for lookups (b) take care of rare collisions.
+We had initially started by using all 16 bytes of the MD5 of the key in the index file. But over time as we started on-boarding various new stores we started getting performance problem. This was happening because having lots of stores was resulting in stamping on each others pages in the page cache. To alleviate this problem we needed to cut down on the amount of data being memory mapped. This could be achieved by cutting down on the number of bytes of the MD5 of the key and accepting collisions in the data file. So we wanted to find the right number of bits which would result in minimum number of collisions. This problem could easily be mapped to the classic birthday paradox problem,  which says that if we want to retrieve \verb=n= random integers from a uniform distribution of range \verb=[1, x]=, the probability that at least 2 numbers are the same is  $(1 - e^{\frac{-n(n-1)}{2x}})$. Mapping this to our read-only stores scenario, our \verb=n= is generally our 120 million member user base, while the initial value of \verb=x= was equal to $2^{128} - 1$ ( 16 bytes of MD5 = 128 bits ). The probability of collision in this scenario was close to 0. Now if we try to decrease this to say 4 bytes ( i.e. 32 bit ), this gives a very high collision probability of $(1 - e^{\frac{(-120*10^{6} * ( 120*10^{6} - 1)}{2 * (2^{32} - 1)}}) \sim 1$. But if we instead cut it by half to 8 bytes ( i.e. 64 bits ) we get a very low probability of $(1 - e^{\frac{(-120*10^{6} * (120*10^{6} - 1)} { 2 * (2^{64} - 1 )}}) \sim 3.9024e^{-04}$. The probability of more than one collision is even smaller. In conclusion, by decreasing the number of bytes of the MD5 of the key we were able to cut down the index size by 40\%, thereby making our clusters more multi-tenant. Unfortunately this came at the expense of us having to (a) save the keys in the data file to use for lookups (b) take care of rare collisions in the data files.
 
-The data file is similarly a very highly packed structure where we store the number of collided tuples followed by a set of collided $key\,size, value\,size, key, value$ list. The important thing to remember here is that we store the raw key bytes instead of the MD5-ed key bytes in order to do a comparison during reads. 
+The data file is similarly a very highly packed structure where we store the number of collided tuples followed by a set of collided \verb=[key size, value size, key, value]= list. The important thing to remember here is that we store the raw key bytes instead of the MD5-ed key bytes in order to do a comparison during reads. 
 
 
 % ========================== READ-ONLY-STORAGE ENGINE  - VERSIONING ==========================================
@@ -296,7 +299,7 @@ store_name/
 
 Every store is represented by a directory which in turn can contain various `versions' of the data. Since the data in all the version directories, other than the one pointed by latest, are inactive we are not affecting the page cache usage and hence the latency. Since disk is cheap and rollbacks are important to us, keeping some previous copies of the data is very important. Also the number of backups we keep is configurable and generally depends on the cluster usage. So for example a cluster in a developer environment need not keep any backup at all while that in production should keep a reasonable number.
 
-Every version directory follows the naming convention of $version-<no>$, where every new push of data should have a number greater than the previous ones. Having an increasing number convention allows the developer to figure out which version of data push they pushed. Also we do not have any restriction on these numbers as long as they are increasing. Hence the developer can override the default contiguous integer version number and instead opt for time-stamp since epoch thereby allowing them to track when the data was pushed. Along with the version directories we also store a symbolic link `latest' which points to the directory from which we are serving data. Now deploying a new data version is as simple as starting a new version folder with a number greater than the previous ones and then changing the symbolic link. Every new push of data also makes sure to maintain the correct number of backups and in an attempt to decrease I/O does the delete of previous versions asynchronously. Finally rollback of data is again as simple as changing the symbolic link to a previous version folder and swapping the data in. 
+Every version directory follows the naming convention of \verb=version-<no>=, where every new push of data should have a number greater than the previous ones. Having an increasing number convention allows the developer to figure out which version of data push they pushed. Also we do not have any restriction on these numbers as long as they are increasing. Hence the developer can override the default contiguous integer version number and instead opt for time-stamp since epoch thereby allowing them to track when the data was pushed. Along with the version directories we also store a symbolic link `latest' which points to the directory from which we are serving data. Now deploying a new data version is as simple as starting a new version folder with a number greater than the previous ones and then changing the symbolic link. Every new push of data also makes sure to maintain the correct number of backups and in an attempt to decrease I/O does the delete of previous versions asynchronously. Finally rollback of data is again as simple as changing the symbolic link to a previous version folder and swapping the data in. 
 
 % ========================== READ-ONLY-STORAGE ENGINE  - CHUNK GENERATION ==========================================
 
@@ -315,20 +318,22 @@ Construction of the chunk files for all nodes is a single MapReduce job. The fol
 # K - raw key
 # V - raw value
 map(K, V):
-  K' = makeKey(K, V)     # Voldemort key
-  V' = makeValue(K, V)   # Voldemort value
+  K' = makeKey(K, V)     	# Voldemort key
+  V' = makeValue(K, V)   	# Voldemort value
   MD5K' = md5(K')
   [partitionIds] = preferenceList(MD5K')
+  replicaId = 0			# Replica type - Primary (0)
   foreach ( partitionId in partitionIds )
     nodeId = partitionToNode(partitionId)
-    emit(topBytes(MD5K', 8),<nodeId, partitionId, K',V'>)      
+    emit(topBytes(MD5K', 8),<nodeId, partitionId, replicaId, K',V'>) 
+    replicaId++     
 
 # K - Top 8 bytes of MD5 of Voldemort key
-# V - <nodeId, partitionId, Voldemort key, Voldemort value>
+# V - <Node Id,Partition Id,Replica Id,Voldemort key,Voldemort value>
 # return reducer id
 partitioner(K, V) : int
   chunkId = topBytes(K, size(int)) % numChunks
-  return V.partitionId * repFactor + chunkId
+  return ((V.partitionId*repFactor+replicaId)*numChunks)+chunkId
  
 # K - Same as partitioner
 # V - Same as partitioner
@@ -347,7 +352,7 @@ reduce (K, Iterator<V> iter)
 \normalsize
 
 
-The Hadoop based job consists on a simple map phase which partitions the data depending on the routing strategy, a partitioner which redirects the keys to the correct reducer and finally the reduce phase which writes the data to a single chunk ( i.e. a data and index file ). We have an extensible mapper which takes the source data in any format, using Hadoop's InputFormat, and then has a custom hook to convert it into the format Voldemort will be serializing. This phase then emits out the upper 8 bytes of MD5 of the Voldemort key `replication-factor' number of times as the map phase key while the map phase value is a grouped tuple of node id, partition id and the raw Voldemort key and value. We then have a custom partitioner which generates the chunk id from this key. Since we have a fixed number of chunks on a per partition-replica basis we do a simple mod of number of chunks to get the chunk id. The partitioner then uses the partition id, replication factor of the store and the chunk id to route the key to the correct reducer. A reducer is responsible for only one chunk and hence more chunks can give us more parallelism during the build. Finally since Hadoop automatically sorts the data based on the key to one reducer we get the data in the order in which we want to output it to the data files. Hence the reducer phase is a simple append to index and data file on HDFS with no extra processing required.  
+The Hadoop based job consists on a simple map phase which partitions the data depending on the routing strategy, a partitioner which redirects the keys to the correct reducer and finally the reduce phase which writes the data to a single chunk ( i.e. a data and index file ). We have an extensible mapper which takes the source data in any format, using Hadoop's InputFormat, and then has a custom hook to convert it into the format Voldemort will be serializing. This phase then emits out the upper 8 bytes of MD5 of the Voldemort key `replication-factor' number of times as the map phase key while the map phase value is a grouped tuple of node id, partition id, replica id and the raw Voldemort key and value. We then have a custom partitioner which generates the chunk id from this key. Since we have a fixed number of chunks on a per partition-replica basis we do a simple mod of number of chunks to get the chunk id. The partitioner then uses the partition id, replication factor of the store and the chunk id to route the key to the correct reducer. A reducer is responsible for only one chunk and hence more chunks can give us more parallelism during the build. Finally since Hadoop automatically sorts the data based on the key to one reducer we get the data in the order in which we want to output it to the data files. Hence the reducer phase is a simple append to index and data file on HDFS with no extra processing required.  
 
 The figure below shows how we layout the chunk files on HDFS. We separate the data on a per node basis so as allow have a one folder to one node mapping. This makes the data fetching process easier since every node can now work on its own folder. 
 
@@ -376,15 +381,15 @@ Following is a rough sketch of the algorithm to find the data.
 
 \begin{itemize}
 	\item Calculate the MD5 of the key
-	\item Generate partition id, replica type ( Which replica were we searching for when we came to this node? ) and chunk id ( By taking the first 4 bytes of the MD5-ed key, modulo the number of chunks )
-	\item Go to the store's folder and find the chunk files having the above chunk id in the bucket ( partition id and replica type ). 
+	\item Generate partition id, replica id ( Which replica were we searching for when we came to this node? ) and chunk id ( By taking the first 4 bytes of the MD5-ed key, modulo the number of chunks )
+	\item Go to the store's folder and find the chunk files having the above chunk id in the bucket ( partition id and replica id ). 
 	\item Do a binary / interpolation search using the top 8 bytes of the MD5-ed key as the search key in the index file. This is easy to do since we have fixed space requirements for every key ( 12 bytes - 8 bytes for key and 4 bytes for offset ) thereby not requiring any internal pointers within the index file. For example to find the data location of the $i$th element in the sorted index is a simple jump to the offset 12 * $i$ + 8 from where we can read the offset to the data file.  
 	\item Once we have the offset in the data file we iterate over all the collided tuples in the data file, comparing the keys. If we find the key we are looking for, we return the corresponding value.
 \end{itemize}
 
 The most time consuming step above is the search in the index file. A simple binary search in an index of size 1 million keys can result in around 20 key comparisons. This means if the cache is completely not cached we will be doing 20 expensive disk seeks just to read one value. To partially solve this problem while fetching the files from HDFS we transfer the index files after all data files. This keeps the index files in the operating system's page cache thereby helping decreasing the number of times we hit the disk. Unfortunately this still doesn't help in the scenario when we do a rollback of data to a previous version folder. 
 
-A lot of previous work has been done in the area of search algorithms for disk files which are sorted. One of these algorithms includes Interpolation search\cite{An adaptation of a root finding method to searching ordered disk files}. This search strategy is a little smarter than binary search, in that instead of always looking into the middle of the search range in the array, it uses the key distribution to predict the approximate location of the key. This works very well for uniformly distributed keys and drops the search complexity from O( lg N ) to O ( lg lg N ). This definitely helps in the completely un-cached scenario since we are dropping the number of key lookups which in turn each cost a couple of milliseconds. We also explored other work like Fast and Pegasus, most of which have been built for non-uniform distributions. Since MD5 provides a good uniform distribution the speed-up involved in using these other algorithms is very small. 
+A lot of previous work has been done in the area of search algorithms for disk files which are sorted. One of these algorithms includes Interpolation search\cite{An adaptation of a root finding method to searching ordered disk files}. This search strategy is a little smarter than binary search, in that instead of always looking into the middle of the search range in the array, it uses the key distribution to predict the approximate location of the key. This works very well for uniformly distributed keys and drops the search complexity from O( log N ) to O ( log log N ). This definitely helps in the completely un-cached scenario since we are dropping the number of key lookups which in turn each cost a couple of milliseconds. We also explored other work like Fast and Pegasus, most of which have been built for non-uniform distributions. Since MD5 provides a good uniform distribution the speed-up involved in using these other algorithms is very small. 
 
 % ========================== READ-ONLY-STORAGE ENGINE  - COMPLETE DATA CYCLE ==========================================
 
@@ -400,11 +405,11 @@ Figure \ref{cycle} shows the complete data cycle that eventually results in new 
   \label{cycle}
 \end{figure}
 
-The initiator of this complete fetching and swapping of new data process can be either Azkaban or a standalone driver program. Azkaban\cite{Azkaban} is a simple batch scheduler built at LinkedIn which allows you to schedule Hadoop as well other offline batch jobs. Individual end products schedule batch Hadoop and Pig jobs to run algorithms on the raw data which finally push the data to Voldemort as the last step. The last step starts by Azkaban triggering our Hadoop job described in Section \ref{sec:read_only:chunk_generation}. This job generates the data on a per node basis and stores it into HDFS. While streaming the data out onto HDFS we also calculate the checksum on a per node basis. This checksum is calculated by running an MD5 on the individual MD5s of all the chunk files in a node directory. This data is then stored in a special file $.metadata$. 
+The initiator of this complete fetching and swapping of new data process can be either Azkaban or a standalone driver program. Azkaban\cite{Azkaban} is a simple batch scheduler built at LinkedIn which allows you to schedule Hadoop as well other offline batch jobs. Individual end products schedule batch Hadoop and Pig jobs to run algorithms on the raw data which finally push the data to Voldemort as the last step. The last step starts by Azkaban triggering our Hadoop job described in Section \ref{sec:read_only:chunk_generation}. This job generates the data on a per node basis and stores it into HDFS. While streaming the data out onto HDFS we also calculate the checksum on a per node basis. This checksum is calculated by running an MD5 on the individual MD5s of all the chunk files in a node directory. This checksum value is then stored in a special file $.metadata$ in every node folder. 
 
-Once the Hadoop job is complete Azkaban triggers a fetch request on all Voldemort nodes along with information about the root directory path on HDFS. A Voldemort node then picks up its corresponding node folder on HDFS and triggers a parallel fetch into a new version directory. The user has the ability to manually version the push with his own number or fall back on the default increasing number version. We also calculate the same checksum while streaming the data in so as to cross-check it with the stored checksum in the $.metadata$ file. While building this fetch layer we made sure it was pluggable so as to support fetching data from non-HDFS locations as well. The other important decision we made here was to adopt the pull model instead of the push model. This helps us a lot because now the Voldemort node has the power to throttle the fetches in case of any latency problems. 
+Once the Hadoop job is complete Azkaban triggers a fetch request on all Voldemort nodes along with information about the root directory path on HDFS. This request is received by our `administrative service' on every node which then initiates an HDFS client and starts a parallel fetch for the node folder it is responsible for. This data is stored into a new version directory whose version number could either be specified as a parameter by Azkaban or defaulted to ( previous version number + 1 ). While the data is being fetched from HDFS we also calculate the same checksum so as to cross-check it with the stored checksum in the $.metadata$ file. While building this fetch layer we made sure to keep the interface generic so as to support fetching data from non-HDFS locations as well. The other important decision we made here was to adopt the pull model instead of the push model. This allows the Voldemort node to now throttle the fetches in case of any latency problems. 
 
-Finally after the fetch is complete we need to swap the new data-set in and swap the older version out. To perform a swap we use a read-write lock in our storage engine. The write lock is held onto when the swap starts during which we do the following - close all open file in the current version directory, change the symbolic link to the new version directory and finally open all chunk files and memory map the indexes. This complete operation takes a few milliseconds irrespective of the file size. To provide global atomic semantics we make sure that all the nodes have successfully swapped their data. If any one of the swaps have failed we run an extra step to rollback the data on the successful nodes. 
+The next step after the fetch is complete is to swap the new data-set in and swap the older version out. For Azkaban to know when to initiate a swap it needs to know when the fetch has successfully completed. Since the fetch process can take a long time we provide a hook in the administrative service for Azkaban / standalone program to keep checking so as to get a progress report of how much we have finished fetching. Finally after the fetch is complete Azkaban triggers a swap operation on all nodes. This operation is co-ordinated using a read-write lock in our storage engine. We obtain a write lock when the swap starts during which we do the following - close all open file in the current version directory, change the symbolic link to the new version directory and finally open all chunk files and memory map the indexes. This complete operation doesn't take more than a few milliseconds since it is not dependent on the file size information. To provide global atomic semantics we make sure that all the nodes have successfully swapped their data. If any of the swaps have failed, we run an extra step to rollback the data on the successful nodes.
 
 
 % ========================== READ-ONLY-STORAGE ENGINE  - COMPLETE DATA CYCLE - SCHEMA CHANGE ==========================================
@@ -419,12 +424,45 @@ As engineers iterate on their products there are bound to be changes in the unde
 \subsubsection{Rebalancing}
 \label{sec:read_only:data_cycle:rebalancing}
 
-Rebalancing is a major feature which allows Voldemort to easily add or rebalance data around on a live cluster without down time. This feature was initially written for the read-write stores but easily fits into the read-only cycle due to the static nature of the data. Our smallest unit of rebalancing is a partition. In other words addition of new node translates to changing the ownership of some partitions to the new node. In the process of changing primary partition ownership the rebalancing tool also takes care of all secondary movements that might be required due to replica movements. 
+Rebalancing is a major feature which allows Voldemort to easily add or rebalance data around on a live cluster without down time. This feature was initially written for the read-write stores but easily fits into the read-only cycle due to the static nature of the data. Our smallest unit of rebalancing is a partition. In other words addition of a new node translates to giving the ownership of some partitions to it. The rebalancing process is run by a rebalancing tool which co-ordinates the full process. Following are the steps that are followed during the addition of a new node :
+
+\begin{itemize}
+	\item Provide the rebalancing tool with the future cluster topology metadata.
+	\item Using the future cluster topology metadata, generate list of all primary partitions that need to be moved
+	\item Do the following steps for every `batch' of primary partitions. The reason behind moving the partition in small batches is that it makes the process checkpoint-able without having to re-fetch too much data. 
+		\begin{itemize}
+			\item Generate intermediate cluster topology metadata which is current cluster topology with changes in ownership of `batch' of partitions moved
+			\item Use intermediate cluster topology metadata to generate a set of steps that need to be run to finish rebalancing. In this process we also need to take care of all the secondary replica movements that might be required due to the primary partition movement. This plan is a set of \verb=[donating node id, stealing node id]= pairs along with the chunk files being moved. 
+			\item Initiate asynchronous processes ( through the administrative service) on all the stealer nodes which then start stealing chunk files from their corresponding donor nodes. The data is copied into the same version directory which is currently serving live traffic. We also make these nodes to go into a `rebalancing state' thereby not allowing any new fetches and swaps from taking place. 
+			\item Once the fetches have completed the rebalancing tool updates the intermediate cluster topology on all the nodes while also doing an atomic swap of data on the stealer and donor nodes. 
+			
+			This topology change information also needs to be propagated to all the upper services using client side routing. We propagate this information as a lazy process where-in the clients still use the old metadata. If they contact a node with a request for a key in a partition which the node is no more responsible the node sends a special exception. This special exception then results in a re-bootstrap step along with a retry of the previous request.
+		\end{itemize}
+\end{itemize}
+
+The rebalancing tool has also been designed to handle failure scenarios elegantly. Failure during a fetch is not a problem since we haven't swapped the data in. But failure during the swap requires us to rollback the cluster topology to the last good cluster topology while also rolling back the data on the successful nodes. Let us end this section by demonstrating a simple example showing the plan generation. We will run this for the same hash ring shown in Figure \ref{hash} with a store using consistent hashing. We introduce a new node ( Node 3 ) to whom we will initially pass the responsibility of partitions 3. The tables below show the new chunk mapping and the plan generated. 
 
 
+\begin{center}
+    \begin{tabular}{ | c | c | }
+    \hline
+    Node Id & Chunk files \\ \hline
+    0 &  	0\_0, 6\_0, 9\_0,      			5\_1, 8\_1, 11\_1 			\\
+   	1 &   	1\_0, 4\_0, 7\_0, 10\_0,      	0\_1, 3\_1, 6\_1,9\_1  		\\
+   	2 &    	2\_0, 5\_0, 8\_0, 11\_0,    	1\_1, 4\_1, 7\_1, 10\_1		\\
+   	3 &   	3\_0,                         	2\_1 						\\
+\hline
+    \end{tabular}
+\end{center}
 
-Following are the steps : 
-- Talk about invalidmetadataexception
+\begin{center}
+    \begin{tabular}{ | c | c | c | }
+    \hline
+    Stealing Node Id & Donor Node Id & Chunks to steal \\ \hline
+    3 &  0 & 3\_0, 2\_1	\\
+\hline
+    \end{tabular}
+\end{center}
 
 
 % ========================== BENCHMARK ==========================================
@@ -432,24 +470,29 @@ Following are the steps :
 \section{Benchmark}
 \label{sec:benchmark}
 
-In this section we will present some benchmark numbers for generated as well  . All experiments were run on 
+In this section we will present some experimental numbers on a simulated data-set as well as some of our production numbers on two user facing features viz. `People You May Know' ( PYMK ) and `Viewers of this profile also viewed' ( Browsemaps ). We use two metrics to determine a better system - faster build time and good serving latency. All tests were run on boxes running Linux 2.6.18 with Dual CPU ( each having 8 cores running at 2.67 GHz ), 24 GB RAM and ( write disk information ). Following is some information about the 
 
 % ========================== BENCHMARK - BUILD TIMES ==========================================
 
 \subsection{Build times}
 \label{sec:benchmark:build_times}
 
+Build time for 3 cases - Btree, MySQL, Hadoop
 
 % ========================== BENCHMARK - SERVING LATENCY ==========================================
 
 \subsection{Serving latency}
 \label{sec:benchmark:serving_latency}
 
+- Latency on PYMK and Browsemaps
+- Latency on Random data-set
+
 
 % ========================== BENCHMARK - REBALANCING ==========================================
 
 \subsection{Rebalancing}
 \label{sec:benchmark:rebalancing}
+Being able to rebalance
 
 \begin{itemize}
 	\item Random dataset
@@ -483,7 +526,11 @@ b) 16 node - Increase in size of dataset ( 128 GB, 256 GB, 512 GB, 1TB )
 
 In this paper we present a low-latency bulk loading system capable of serving multiple TBs of data. By moving the index construction offline to a batch system like Hadoop, we make our serving layer's performance more reliable. LinkedIn has successfully been running read-only Voldemort clusters for the past 2 years. It has become an integral part of the product eco-system with various engineers also using it frequently for quick prototypes of products. 
 
-There are still some interesting functionalities that we would like to add to the read-only storage pipeline. Firstly, we want to add support for incremental pushes. We do have an initial prototype for in which we create patches for the data files on the Hadoop side ( by comparing against the snapshot of previous pushed data still in HDFS ) and then apply these on the Voldemort side during the fetch. We don't do any patch generation for the index files and just send them over since these are relatively small. We are still exploring the use of this functionality since most of our current users are recommendation products where the values, represented by floats for probabilities, generally change between iterations for most users. Another important feature that we want to add to the fetch pipeline is the ability to only get one replica of the data from HDFS and then propagate it further on the Voldemort node. The motivation for this is that most Voldemort setups might run in a data-center separate from the one running Hadoop ( and HDFS ). In such a scenario optimizing the amount of data being transferred between data-centers can be a great plus. We have also tried compressing the complete data before storing it in HDFS and then un-compressing this on the fly on the Voldemort side. Unfortunately this isn't that helpful in scenarios where the users have decided to use the per-key based compression since we are already dealing with compressed data. But copying just one replica of the data would definitely save inter-data-center bandwidth. Another area of work that we would like to explore is a better index structure that can easily be built in Hadoop. In particular a lot of work has been done in the area of cache oblivious trees, like van Emde Boas trees, which require no knowledge of page size to get optimal cache performance. 
+There are still some interesting functionalities that we would like to add to the read-only storage pipeline. Firstly, we want to add support for incremental pushes. We do have an initial prototype for in which we create patches for the data files on the Hadoop side ( by comparing against the snapshot of previous pushed data still in HDFS ) and then apply these on the Voldemort side during the fetch. We don't do any patch generation for the index files and just send them over since these are relatively small. We are still exploring the use of this functionality since most of our current users are recommendation products where the values, represented by floats for probabilities, generally change between iterations for most users. 
+
+Another important feature that we want to add to the fetch pipeline is the ability to only get one replica of the data from HDFS and then propagate it further on the Voldemort node. The motivation for this is that most Voldemort setups might run in a data-center separate from the one running Hadoop ( and HDFS ). In such a scenario optimizing the amount of data being transferred between data-centers can be a great plus. We have also tried compressing the complete data before storing it in HDFS and then un-compressing this on the fly on the Voldemort side. Unfortunately this isn't that helpful in scenarios where the users have decided to use the per-key based compression since we are already dealing with compressed data. But copying just one replica of the data would definitely save inter-data-center bandwidth. 
+
+Finally we would definitely like to explore some more index structures which would make lookups faster and can be built in Hadoop easily. In particular a lot of work has been done in the area of cache oblivious trees, like van Emde Boas trees, which requires no knowledge of page size to get optimal cache performance. 
  
 \acks
 

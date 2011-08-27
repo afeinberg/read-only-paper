@@ -1,4 +1,4 @@
-This is pdfeTeXk, Version 3.141592-1.21a-2.2 (Web2C 7.5.4) (format=pdflatex 2010.8.25)  26 AUG 2011 10:07
+This is pdfeTeXk, Version 3.141592-1.21a-2.2 (Web2C 7.5.4) (format=pdflatex 2010.8.25)  26 AUG 2011 19:07
 entering extended mode
  file:line:error style messages enabled.
 **voldemort.tex
@@ -203,189 +203,223 @@ loading : Context Support Macros / PDF (2004.03.26)
 \everyMPtoPDFconversion=\toks27
 )
 LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <17.28> not available
-(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 36.
-LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <12> not available
 (Font)              Font shape `OT1/ptm/b/n' tried instead on input line 39.
+LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <12> not available
+(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 42.
 LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <10> not available
-(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 46.
+(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 49.
 LaTeX Font Info:    Font shape `OT1/ptm/bx/it' in size <10> not available
-(Font)              Font shape `OT1/ptm/b/it' tried instead on input line 46.
+(Font)              Font shape `OT1/ptm/b/it' tried instead on input line 49.
 
 
-Package natbib Warning: Citation `1' on page 1 undefined on input line 59.
+Package natbib Warning: Citation `1' on page 1 undefined on input line 62.
 
 
-Package natbib Warning: Citation `2' on page 1 undefined on input line 59.
+Package natbib Warning: Citation `2' on page 1 undefined on input line 62.
 
 
-Package natbib Warning: Citation `3' on page 1 undefined on input line 59.
+Package natbib Warning: Citation `3' on page 1 undefined on input line 62.
 
 
-Package natbib Warning: Citation `4' on page 1 undefined on input line 59.
+Package natbib Warning: Citation `4' on page 1 undefined on input line 62.
 
-
-Underfull \vbox (badness 10000) has occurred while \output is active []
-
- [1{/opt/local/share/texmf-var/fonts/map/pdftex/updmap/pdftex.map}
+[1{/opt/local/share/texmf-var/fonts/map/pdftex/updmap/pdftex.map}
 
 
 ]
 
-Package natbib Warning: Citation `5' on page 2 undefined on input line 63.
+Package natbib Warning: Citation `5' on page 2 undefined on input line 66.
 
 
 Package natbib Warning: Citation `6 - http://dev.mysql.com/doc/refman/5.5/en/op
-timizing-myisam-bulk-data-loading.html' on page 2 undefined on input line 69.
+timizing-myisam-bulk-data-loading.html' on page 2 undefined on input line 72.
 
 
 Package natbib Warning: Citation `http://dev.mysql.com/doc/refman/5.1/en/server
 -system-variables.html-sysvar_bulk_insert_buffer_size' on page 2 undefined on i
-nput line 69.
+nput line 72.
 
 
 Package natbib Warning: Citation `7 - http://dev.mysql.com/doc/refman/5.5/en/my
-isampack.html' on page 2 undefined on input line 69.
+isampack.html' on page 2 undefined on input line 72.
 
 
 Package natbib Warning: Citation `The Case for Shared Nothing Database' on page
- 2 undefined on input line 71.
+ 2 undefined on input line 74.
 
 
 Package natbib Warning: Citation `8 - EfÔ¨Åcient Bulk Insertion into a Distribu
-ted Ordered Table' on page 2 undefined on input line 71.
+ted Ordered Table' on page 2 undefined on input line 74.
 
 
 Package natbib Warning: Citation `9 - PNUTS paper' on page 2 undefined on input
- line 71.
+ line 74.
 
 
 Package natbib Warning: Citation `A Batch of PNUTS: Experiences Connecting Clou
-d Batch and Serving Systems' on page 2 undefined on input line 71.
+d Batch and Serving Systems' on page 2 undefined on input line 74.
 
 
 Package natbib Warning: Citation `10 - Katta link' on page 2 undefined on input
- line 73.
+ line 76.
 
 
 Package natbib Warning: Citation `Distributed Indexing for Semantic Search' on 
-page 2 undefined on input line 73.
+page 2 undefined on input line 76.
 
 
 Package natbib Warning: Citation `11 - Distributed Indexing of Web Scale Datase
-ts for the Cloud' on page 2 undefined on input line 73.
+ts for the Cloud' on page 2 undefined on input line 76.
 
 
 Package natbib Warning: Citation `Parallel Bulk Insertion for Large-scale Analy
-tics Applications' on page 2 undefined on input line 73.
+tics Applications' on page 2 undefined on input line 76.
 
 
 Package natbib Warning: Citation `http://www.datastax.com/dev/blog/bulk-loading
-' on page 2 undefined on input line 73.
+' on page 2 undefined on input line 76.
 
 
 Package natbib Warning: Citation `http://www2.parc.com/csl/projects/bayou/pubs/
-uist-97/Bayou.pdf' on page 2 undefined on input line 77.
+uist-97/Bayou.pdf' on page 2 undefined on input line 80.
 
-LaTeX Font Info:    Try loading font information for OMS+ptm on input line 86.
-(/opt/local/share/texmf-dist/tex/latex/psnfss/omsptm.fd
+[2]
+LaTeX Font Info:    Try loading font information for OMS+ptm on input line 89.
+ (/opt/local/share/texmf-dist/tex/latex/psnfss/omsptm.fd
 File: omsptm.fd 
 )
 LaTeX Font Info:    Font shape `OMS/ptm/m/n' in size <9> not available
-(Font)              Font shape `OMS/cmsy/m/n' tried instead on input line 86.
- [2]
-<arch.png, id=29, 346.1733pt x 286.9119pt>
+(Font)              Font shape `OMS/cmsy/m/n' tried instead on input line 89.
+
+<arch.png, id=26, 346.1733pt x 286.9119pt>
 File: arch.png Graphic file (type png)
  <use arch.png> [3 <./arch.png>]
-<hash.png, id=42, 418.4433pt x 369.2997pt>
+<hash.png, id=45, 384.11505pt x 405.4347pt>
 File: hash.png Graphic file (type png)
  <use hash.png>
 
-Package natbib Warning: Citation `Time' on page 4 undefined on input line 155.
+Package natbib Warning: Citation `Time' on page 4 undefined on input line 158.
 
 
-Package natbib Warning: Citation `clocks' on page 4 undefined on input line 155
+Package natbib Warning: Citation `clocks' on page 4 undefined on input line 158
 .
 
 
 Package natbib Warning: Citation `and the ordering of events in a distributed s
-ystem' on page 4 undefined on input line 155.
+ystem' on page 4 undefined on input line 158.
 
-[4 <./hash.png>] <fullstack.png, id=46, 329.91255pt x 430.36784pt>
+[4 <./hash.png>] <fullstack.png, id=49, 329.91255pt x 430.36784pt>
 File: fullstack.png Graphic file (type png)
 
 <use fullstack.png>
 
 Package natbib Warning: Citation `http://blogs.oracle.com/carriergrademysql/ent
-ry/tips_for_bulk_loading' on page 5 undefined on input line 214.
-
-
-Package natbib Warning: Citation `ElephantDB' on page 5 undefined on input line
- 218.
+ry/tips_for_bulk_loading' on page 5 undefined on input line 217.
 
 [5 <./fullstack.png>]
+
+Package natbib Warning: Citation `ElephantDB' on page 6 undefined on input line
+ 221.
+
+
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
 
 
 Package natbib Warning: Citation `Page 203 - Understanding MySQL internals' on 
-page 6 undefined on input line 234.
+page 6 undefined on input line 237.
 
-<storage_format.png, id=50, 452.4102pt x 613.21095pt>
+<storage_format.png, id=53, 452.4102pt x 613.21095pt>
 File: storage_format.png Graphic file (type png)
  <use storage_format.png>
-[6] [7 <./storage_format.png>] [8]
+Underfull \hbox (badness 3657) in paragraph at lines 249--250
+\OT1/ptm/m/n/10 pat-tern []\OT1/cmtt/m/n/10 <partition id>_<replica id>_<chunk 
+id>.
+ []
+
+[6]
+Underfull \vbox (badness 3148) has occurred while \output is active []
+
+
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
+ [7 <./storage_format.png>]
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
+
+Overfull \hbox (12.87811pt too wide) in paragraph at lines 328--328
+[]    \OT1/cmtt/m/n/7 emit(topBytes(MD5K', 8),<nodeId, partitionId, replicaId, 
+K',V'>)[] 
+ []
+
+
+Overfull \hbox (16.59691pt too wide) in paragraph at lines 332--332
+[]\OT1/cmtt/m/n/7 # V - <Node Id,Partition Id,Replica Id,Voldemort key,Voldemor
+t value>[] 
+ []
+
+
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
+ [8]
 
 Package natbib Warning: Citation `An adaptation of a root finding method to sea
-rching ordered disk files' on page 9 undefined on input line 387.
+rching ordered disk files' on page 9 undefined on input line 392.
 
-<cycle.png, id=76, 403.2666pt x 357.0138pt>
+<cycle.png, id=79, 403.2666pt x 357.0138pt>
 File: cycle.png Graphic file (type png)
  <use cycle.png>
-Overfull \hbox (1.96182pt too wide) in paragraph at lines 398--399
+Overfull \hbox (1.96182pt too wide) in paragraph at lines 403--404
  [][] 
  []
 
 
 Package natbib Warning: Citation `Azkaban' on page 9 undefined on input line 40
-3.
+8.
 
 [9 <./cycle.png>]
-Missing character: There is no ¬ in font ptmr7t!
-Missing character: There is no † in font ptmr7t!
+Overfull \hbox (4.33743pt too wide) in paragraph at lines 434--435
+[]\OT1/ptm/m/n/10 Generate in-ter-me-di-ate clus-ter topol-ogy meta-data which
+ []
 
-Underfull \vbox (badness 1270) has occurred while \output is active []
+
+Underfull \vbox (badness 5260) has occurred while \output is active []
 
  [10]
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
+ [11]
 No file voldemort.bbl.
 
 Package natbib Warning: There were undefined citations.
 
-[11
+[12
 
 ] (./voldemort.aux) ) 
 Here is how much of TeX's memory you used:
- 2142 strings out of 94500
- 26958 string characters out of 1174973
- 84420 words of memory out of 1000000
- 5309 multiletter control sequences out of 10000+50000
- 21480 words of font info for 41 fonts, out of 500000 for 2000
+ 2146 strings out of 94500
+ 27007 string characters out of 1174973
+ 85420 words of memory out of 1000000
+ 5312 multiletter control sequences out of 10000+50000
+ 21141 words of font info for 41 fonts, out of 500000 for 2000
  580 hyphenation exceptions out of 1000
- 31i,7n,34p,1871b,229s stack positions out of 1500i,500n,5000p,200000b,5000s
+ 31i,7n,34p,1959b,285s stack positions out of 1500i,500n,5000p,200000b,5000s
 PDF statistics:
- 85 PDF objects out of 300000
+ 91 PDF objects out of 300000
  0 named destinations out of 131072
  26 words of extra memory for PDF output out of 65536
 </opt/local/share/texmf-dist/fonts/type1/bluesky/cm/cmsy7.
 pfb></opt/local/share/texmf-dist/fonts/type1/bluesky/cm/cmr5.pfb></opt/local/sh
 are/texmf-dist/fonts/type1/bluesky/cm/cmmi5.pfb></opt/local/share/texmf-dist/fo
 nts/type1/bluesky/cm/cmsy5.pfb></opt/local/share/texmf-dist/fonts/type1/bluesky
-/cm/cmsy10.pfb></opt/local/share/texmf-dist/fonts/type1/bluesky/cm/cmr7.pfb></o
-pt/local/share/texmf-dist/fonts/type1/bluesky/cm/cmtt8.pfb></opt/local/share/te
-xmf-dist/fonts/type1/bluesky/cm/cmr10.pfb></opt/local/share/texmf-dist/fonts/ty
-pe1/bluesky/cm/cmsy9.pfb></opt/local/share/texmf-dist/fonts/type1/bluesky/cm/cm
-mi10.pfb>{/opt/local/share/texmf-dist/fonts/enc/dvips/psnfss/8r.enc}</opt/local
-/share/texmf-dist/fonts/type1/urw/times/utmri8a.pfb></opt/local/share/texmf-dis
-t/fonts/type1/urw/times/utmbi8a.pfb></opt/local/share/texmf-dist/fonts/type1/bl
-uesky/cm/cmss10.pfb></opt/local/share/texmf-dist/fonts/type1/urw/times/utmr8a.p
-fb></opt/local/share/texmf-dist/fonts/type1/urw/times/utmb8a.pfb>
-Output written on voldemort.pdf (11 pages, 741353 bytes).
+/cm/cmsy10.pfb></opt/local/share/texmf-dist/fonts/type1/bluesky/cm/cmtt10.pfb><
+/opt/local/share/texmf-dist/fonts/type1/bluesky/cm/cmr7.pfb></opt/local/share/t
+exmf-dist/fonts/type1/bluesky/cm/cmtt8.pfb></opt/local/share/texmf-dist/fonts/t
+ype1/bluesky/cm/cmr10.pfb></opt/local/share/texmf-dist/fonts/type1/bluesky/cm/c
+msy9.pfb></opt/local/share/texmf-dist/fonts/type1/bluesky/cm/cmmi10.pfb>{/opt/l
+ocal/share/texmf-dist/fonts/enc/dvips/psnfss/8r.enc}</opt/local/share/texmf-dis
+t/fonts/type1/urw/times/utmri8a.pfb></opt/local/share/texmf-dist/fonts/type1/ur
+w/times/utmbi8a.pfb></opt/local/share/texmf-dist/fonts/type1/bluesky/cm/cmss10.
+pfb></opt/local/share/texmf-dist/fonts/type1/urw/times/utmr8a.pfb></opt/local/s
+hare/texmf-dist/fonts/type1/urw/times/utmb8a.pfb>
+Output written on voldemort.pdf (12 pages, 768364 bytes).
