@@ -69,7 +69,7 @@ The rest of the paper has been structured into 5 sections. In Section \ref{sec:r
 
 \section{Related Work}
 \label{sec:related_work}
-The most commonly deployed serving system in various companies is MySQL. The two most used storage engines of MySQL - MyISAM and InnoDB - provide bulk loading capabilities into live system with `LOAD DATA INFILE' statement. MyISAM is the better amongst the two because of its compact on-disk space usage and its ability to delay the re-creation of the index to a time after the load\cite{6 - http://dev.mysql.com/doc/refman/5.5/en/optimizing-myisam-bulk-data-loading.html}.  Unfortunately we still have to deal with the problem of needing lots of memory ( required for maintaining the special tree-like cache used buring bulk loading \cite{http://dev.mysql.com/doc/refman/5.1/en/server-system-variables.html-sysvar_bulk_insert_buffer_size}) during the re-creation which in turn may affect our live requests performance. MyISAM also provides the ability to build compressed read-only tables \cite{7 - http://dev.mysql.com/doc/refman/5.5/en/myisampack.html} which can increase the speed of loading. Even though this decreases the load time, we still have no way to parallelize loads while also locking the complete table for the duration of the load. Obviously this doesn't work for us since applications at LinkedIn cannot have down-time. 
+The most commonly deployed serving system in various companies is MySQL. The two most used storage engines of MySQL - MyISAM and InnoDB - provide bulk loading capabilities into live system with `LOAD DATA INFILE' statement. MyISAM is the better amongst the two because of its compact on-disk space usage and its ability to delay the re-creation of the index to a time after the load\cite{6 - http://dev.mysql.com/doc/refman/5.5/en/optimizing-myisam-bulk-data-loading.html}.  Unfortunately we still have to deal with the problem of needing lots of memory ( required for maintaining the special tree-like cache used buring bulk loading \cite{http://dev.mysql.com/doc/refman/5.1/en/server-system-variables.html-sysvar_bulk_insert_buffer_size}) during the re-creation. MyISAM also provides the ability to build compressed read-only tables \cite{7 - http://dev.mysql.com/doc/refman/5.5/en/myisampack.html} which can increase the speed of loading. Even though this decreases the load time, we still have no way to parallelize loads while also locking the complete table for the duration of the load. Obviously this doesn't work for us since applications at LinkedIn cannot have down-time. 
 
 A lot of work has also been done to add bulk loading ability to some new shared-nothing cluster\cite{The Case for Shared Nothing Database} databases similar to Voldemort. In \cite{8 - Efﬁcient Bulk Insertion into a Distributed Ordered Table} tackles the problem of bulk insertion into range partitioned tables in PNUTS \cite{9 - PNUTS paper} by adding another \emph {planning phase} to gather more statistics for the movement. Another paper from the same team \cite{A Batch of PNUTS: Experiences Connecting Cloud Batch and Serving Systems} shows how they used Hadoop to batch insert data faster into PNUTS.
 
@@ -214,7 +214,7 @@ Now that we know the individual components, let us look at how Voldemort is bein
 \section{Read-only storage engine}
 \label{sec:read_only}
 
-Before we started writing our own custom storage engine we decided to evaluate all the current storage engines that Voldemort supported in order to see if they could fit our bulk loading use-case. The first two storage engines that we tried were MySQL and Berkeley DB ( BDB ). We started by evaluating the various storage engines provided by MySQL. Our criteria for success was the ability to bulk load data as fast as possible and with minimum disk space overhead. The first simple and most naive way to load data into MySQL is by using multiple `INSERT' statement. The problem with this approach is that every statement results in an incremental change to the underlying index structure ( in this case - B+ tree ) which in turn can result in a lot of disk I/O. To solve this problem, MySQL provides the `LOAD DATA' statement which tries to bulk update the underlying index. The problem here is that we will need to lock the complete table during bulk loads if we use MyISAM storage engine since it supports only table wide lock. This results in all incoming requests being queued and not served during the loading. This problem is solved by InnoDB which supports row-level locking, but comes at the expense of having a huge disk space overhead for every tuple. This can result in a massive increase of data during bulk loads. Unfortunately the only way to get InnoDB to perform as well as MyISAM for bulk loads is by having the special requirement of having your data ordered by primary key.  \cite{http://blogs.oracle.com/carriergrademysql/entry/tips_for_bulk_loading}. 
+Before we started writing our own custom storage engine we decided to evaluate all the current storage engines that Voldemort supported in order to see if they could fit our bulk loading use-case. The first two storage engines that we tried were MySQL and Berkeley DB ( BDB ). We started by evaluating the various storage engines provided by MySQL. Our criteria for success was the ability to bulk load data as fast as possible and with minimum disk space overhead. The first simple and most naive way to load data into MySQL is by using multiple `INSERT' statement. The problem with this approach is that every statement results in an incremental change to the underlying index structure ( in this case - B$^{+}$ tree ) which in turn can result in a lot of disk I/O. To solve this problem, MySQL provides the `LOAD DATA' statement which tries to bulk update the underlying index. The problem here is that we will need to lock the complete table during bulk loads if we use MyISAM storage engine since it supports only table wide lock. This results in all incoming requests being queued and not served during the loading. This problem is solved by InnoDB which supports row-level locking, but comes at the expense of having a huge disk space overhead for every tuple. This can result in a massive increase of data during bulk loads. Unfortunately the only way to get InnoDB to perform as well as MyISAM for bulk loads is by having the special requirement of having your data ordered by primary key.  \cite{http://blogs.oracle.com/carriergrademysql/entry/tips_for_bulk_loading}. 
 
 The general learning from the above tests was that we should aim to build our index offline rather than on the live server. Building the index on the live server can start taking up both CPU and IO resources. We decided to skip InnoDB from future tests due to huge space requirements and tried to build MyISAM storage engine data offline. To do so we leverage the fact that MySQL allows you to copy database files from another node into a live database directory to automatically make it available for serving. We set up a separate cluster where-in we would bulk load and then eventually copy the data over to the list cluster. The biggest problem with this approach is the extra maintenance cost that we need to incur to have a separate MySQL cluster with exactly the same number of nodes as the live one. We also need to write a lot of custom code to deal with failure scenarios during these intermediate bulk pushes. Also the lack of ability to load compressed data directly makes this process more time consuming since now we are copying our data multiple times - once as a flat file to the bulk load cluster, then to the actual database during the LOAD statement and finally the raw data copy to the actual live database. 
 
@@ -389,7 +389,9 @@ Following is a rough sketch of the algorithm to find the data.
 
 The most time consuming step above is the search in the index file. A simple binary search in an index of size 1 million keys can result in around 20 key comparisons. This means if the cache is completely not cached we will be doing 20 expensive disk seeks just to read one value. To partially solve this problem while fetching the files from HDFS we transfer the index files after all data files. This keeps the index files in the operating system's page cache thereby helping decreasing the number of times we hit the disk. Unfortunately this still doesn't help in the scenario when we do a rollback of data to a previous version folder. 
 
-A lot of previous work has been done in the area of search algorithms for disk files which are sorted. One of these algorithms includes Interpolation search\cite{An adaptation of a root finding method to searching ordered disk files}. This search strategy is a little smarter than binary search, in that instead of always looking into the middle of the search range in the array, it uses the key distribution to predict the approximate location of the key. This works very well for uniformly distributed keys and drops the search complexity from O( log N ) to O ( log log N ). This definitely helps in the completely un-cached scenario since we are dropping the number of key lookups which in turn each cost a couple of milliseconds. We also explored other work like Fast and Pegasus, most of which have been built for non-uniform distributions. Since MD5 provides a good uniform distribution the speed-up involved in using these other algorithms is very small. 
+A lot of previous work has been done in the area of search algorithms for disk files which are sorted. One of these algorithms includes Interpolation search\cite{An adaptation of a root finding method to searching ordered disk files}. This search strategy is a little smarter than binary search, in that instead of always looking into the middle of the search range in the array, it uses the key distribution to predict the approximate location of the key. This works very well for uniformly distributed keys and drops the search complexity from O( log N ) to O ( log log N ). This definitely helps in the completely un-cached scenario since we are dropping the number of key lookups. Saving every key comparison in the un-cached scenario is beneficial since every every lookup costs a couple of milliseconds. The one disadvantage of interpolation search is that the rate of data now becoming cache decreases due to less areas of the index that we are accessing. 
+
+Other than the above algorithms, we also explored other algorithms like Fast and Pegasus, most of which have been built for non-uniform distributions. Since MD5 provides a good uniform distribution the speed-up involved in using these other algorithms is very small. 
 
 % ========================== READ-ONLY-STORAGE ENGINE  - COMPLETE DATA CYCLE ==========================================
 
@@ -470,22 +472,47 @@ The rebalancing tool has also been designed to handle failure scenarios elegantl
 \section{Benchmark}
 \label{sec:benchmark}
 
-In this section we will present some experimental numbers on a simulated data-set as well as some of our production numbers on two user facing features viz. `People You May Know' ( PYMK ) and `Viewers of this profile also viewed' ( Browsemaps ). We use two metrics to determine a better system - faster build time and good serving latency. All tests were run on boxes running Linux 2.6.18 with Dual CPU ( each having 8 cores running at 2.67 GHz ), 24 GB RAM and ( write disk information ). Following is some information about the 
+In this section we will present some experimental numbers on a simulated data-set as well as some of our production numbers on two user facing features viz. `People You May Know' ( PYMK ) and `Viewers of this profile also viewed' ( Browsemaps ). We use two metrics to determine a better system - faster build time and good serving latency. All tests were run on boxes running Linux 2.6.18 with Dual CPU ( each having 8 cores running at 2.67 GHz ), 24 GB RAM and ( write disk information ). We ran MySQL Community Edition version 5.0.27 for the MyISAM tests. Following is some information about the data-sets that we will be using. 
 
-% ========================== BENCHMARK - BUILD TIMES ==========================================
+\begin{itemize}
+	\item Random data-set : The key is a long between 0 and a varying number. The value is a fixed 1024 bytes size random string. 
+	\item PYMK / Browsemaps data-set : Both of them have member id as their key. The value is a list of integer and float pair for PYMK while a list of 2 integers, a string and a float for Browsemaps. The approximate value size distributions for the two have been shown in Figure \ref{distribution}.  
+\end{itemize}
 
-\subsection{Build times}
-\label{sec:benchmark:build_times}
+\begin{figure}
+  \centering
+    \includegraphics[scale=0.35]{distribution.png}
+  \caption{Value size distributions}
+  \label{distribution}
+\end{figure}
 
-Build time for 3 cases - Btree, MySQL, Hadoop
+The first metric that we look into is the build times. To do a fair comparison we build all our stores for a single node. The build time in case of our Hadoop job includes the time it takes to generate the chunk mapping ( map phase ), shuffle the data and finally emit it to the store files ( reduce phase ). The number of mappers and reducer were kept fixed so as to have same amount of parallelism. This also resulted in fixed number of chunks being generated.
 
-% ========================== BENCHMARK - SERVING LATENCY ==========================================
+In case of MySQL - MyISAM test the total time only includes the completion of the `LOAD DATA INFILE' command. This does not include the time it took us to extract this data, convert it into TSV format and finally copy it over to the node running MySQL single instance. Some other optimizations we did to make MySQL faster include - (a) Increasing the MySQL bulk insert buffer size and MyISAM specific sort buffer size to 256 MB each (b) Delaying the re-creation of the index to a latter time by running `ALTER TABLE...DISABLE KEYS' statement before the load. 
 
-\subsection{Serving latency}
-\label{sec:benchmark:serving_latency}
+Besides the B$^{+}$ tree structure built inside MySQL, we wanted to try to build our own B$^{+}$ tree structure tailored to Hadoop. Instead of generating chunk files in every reducer step, we generate a B$^{+}$ tree. This tree contains of a single data file ( similar to the chunk data file ) and a set of index files corresponding to every level of the tree. The bulk loading of the tree is done in blocks ( of size $b$ ) i.e. we first finish the lower level's block and only then initialize a block at the next level. We then apply this rule recursively for every level as the sorted elements stream through. This bulk loading approach is efficient in that it does not require us to buffer any values in memory and can directly write to the level based index files. 
 
-- Latency on PYMK and Browsemaps
-- Latency on Random data-set
+The graph in Figure \ref{build} is the build time in seconds for the above three scenarios as we increased the size of the data-set. The block size $b$ for the B$^{+}$ was set to 340. We chose this value since our keys were 12 bytes ( 8 byte MD5 and 4 byte offset ) long and the page size was 4096 bytes. This meant the best block size would be approximately 4096/12 $\sim$ 340. As is clearly evident MySQL takes a really long time even after being alloted a huge buffer size. The optimized B$^{+}$ on the other hand performs very well initially for small sizes but starts to deviate for larger sizes due to the extra I/O that it needs to do. In particular it needs to do extra disk writes equal to the data in the higher levels of the tree. For a fixed block size, the extra disk writes is linear with the number of tuples. 
+
+\begin{figure}
+  \centering
+    \includegraphics[scale=0.35]{build.png}
+  \caption{Build time vs size of data}
+  \label{build}
+\end{figure}
+
+The next metric we benchmark is the search latency. For the random data-set we used 10 million requests with simulated values following either an uniform distribution or a zipfian distribution. For the PYMK and Browsemaps data-set we took a snapshot of member activity from our Kafka stream on one of the high traffic days and used that data to generate performance numbers. 
+
+We first try to understand the performance implications of binary search vs interpolation search. Figure shows the Show the drops for zipfian vs uniform for either 99th or average latency
+
+ the difference between using binary search vs interpolation search. These tests were again run initially on a single box with From the tests binary search does an  17.5 while interpolation has 4. If we keep an absolutely non-cached The problem 
+
+17.5
+4
+
+
+
+We first present both the 
 
 
 % ========================== BENCHMARK - REBALANCING ==========================================
@@ -494,29 +521,6 @@ Build time for 3 cases - Btree, MySQL, Hadoop
 \label{sec:benchmark:rebalancing}
 Being able to rebalance
 
-\begin{itemize}
-	\item Random dataset
-- Run on member\_id to uniform key of 1024 bytes
-- The time to completion increases linearly with the size of the dataset and is comparable between different types of data
-
-a) Single node - Increase in size of dataset - 1GB, 2GB, 4GB, 8GB, 16GB, 32GB, 64GB, 128GB 
-       [ Metric 1 ] Time to build
-       [ Metric 2 ] Time to query ( Median, 99th ) - YCSB - 100 million keys - Uniform, Zipfian 
-
-b) 16 node - Increase in size of dataset ( 128 GB, 256 GB, 512 GB, 1TB )
-      [ Metric 1 ] Time to build
-      [ Metric 2 ] Time to query ( Median, 99th ) - YCSB - 100 million keys - Uniform, Zipfian 
-
-	\item PYMK dataset
-	a) 16 node 
-       - Time to build
-       - Time to query ( Median, 99th ) - YCSB - 100 million keys - Uniform, Zipfian 
-
-	\item Browsemaps dataset
-	a) 16 node
-	   - Time to build
-	   - Time to query ( Median, 99th )
-\end{itemize}
 
 
 % ========================== CONCLUSION  ==========================================

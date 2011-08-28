@@ -1,4 +1,4 @@
-This is pdfeTeXk, Version 3.141592-1.21a-2.2 (Web2C 7.5.4) (format=pdflatex 2010.8.25)  26 AUG 2011 19:07
+This is pdfeTeXk, Version 3.141592-1.21a-2.2 (Web2C 7.5.4) (format=pdflatex 2010.8.25)  28 AUG 2011 11:53
 entering extended mode
  file:line:error style messages enabled.
 **voldemort.tex
@@ -280,6 +280,10 @@ Package natbib Warning: Citation `http://www.datastax.com/dev/blog/bulk-loading
 ' on page 2 undefined on input line 76.
 
 
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
+
+
 Package natbib Warning: Citation `http://www2.parc.com/csl/projects/bayou/pubs/
 uist-97/Bayou.pdf' on page 2 undefined on input line 80.
 
@@ -369,57 +373,58 @@ rching ordered disk files' on page 9 undefined on input line 392.
 <cycle.png, id=79, 403.2666pt x 357.0138pt>
 File: cycle.png Graphic file (type png)
  <use cycle.png>
-Overfull \hbox (1.96182pt too wide) in paragraph at lines 403--404
+Overfull \hbox (1.96182pt too wide) in paragraph at lines 405--406
  [][] 
  []
 
 
-Package natbib Warning: Citation `Azkaban' on page 9 undefined on input line 40
-8.
+Package natbib Warning: Citation `Azkaban' on page 9 undefined on input line 41
+0.
 
 [9 <./cycle.png>]
-Overfull \hbox (4.33743pt too wide) in paragraph at lines 434--435
+Overfull \hbox (4.33743pt too wide) in paragraph at lines 436--437
 []\OT1/ptm/m/n/10 Generate in-ter-me-di-ate clus-ter topol-ogy meta-data which
  []
 
+[10] <distribution.png, id=86, 642.4pt x 770.88pt>
+File: distribution.png Graphic file (type png)
+ <use distribution.png>
+[11 <./distribution.png>] <build.png, id=91, 642.4pt x 481.8pt>
+File: build.png Graphic file (type png)
 
-Underfull \vbox (badness 5260) has occurred while \output is active []
+<use build.png>
+Underfull \vbox (badness 1609) has occurred while \output is active []
 
- [10]
-Underfull \vbox (badness 10000) has occurred while \output is active []
 
- [11]
 No file voldemort.bbl.
 
 Package natbib Warning: There were undefined citations.
 
-[12
-
-] (./voldemort.aux) ) 
+[12 <./build.png>] (./voldemort.aux) ) 
 Here is how much of TeX's memory you used:
- 2146 strings out of 94500
- 27007 string characters out of 1174973
- 85420 words of memory out of 1000000
- 5312 multiletter control sequences out of 10000+50000
+ 2156 strings out of 94500
+ 27133 string characters out of 1174973
+ 85416 words of memory out of 1000000
+ 5320 multiletter control sequences out of 10000+50000
  21141 words of font info for 41 fonts, out of 500000 for 2000
  580 hyphenation exceptions out of 1000
  31i,7n,34p,1959b,285s stack positions out of 1500i,500n,5000p,200000b,5000s
 PDF statistics:
- 91 PDF objects out of 300000
+ 95 PDF objects out of 300000
  0 named destinations out of 131072
- 26 words of extra memory for PDF output out of 65536
-</opt/local/share/texmf-dist/fonts/type1/bluesky/cm/cmsy7.
-pfb></opt/local/share/texmf-dist/fonts/type1/bluesky/cm/cmr5.pfb></opt/local/sh
-are/texmf-dist/fonts/type1/bluesky/cm/cmmi5.pfb></opt/local/share/texmf-dist/fo
-nts/type1/bluesky/cm/cmsy5.pfb></opt/local/share/texmf-dist/fonts/type1/bluesky
-/cm/cmsy10.pfb></opt/local/share/texmf-dist/fonts/type1/bluesky/cm/cmtt10.pfb><
-/opt/local/share/texmf-dist/fonts/type1/bluesky/cm/cmr7.pfb></opt/local/share/t
-exmf-dist/fonts/type1/bluesky/cm/cmtt8.pfb></opt/local/share/texmf-dist/fonts/t
-ype1/bluesky/cm/cmr10.pfb></opt/local/share/texmf-dist/fonts/type1/bluesky/cm/c
-msy9.pfb></opt/local/share/texmf-dist/fonts/type1/bluesky/cm/cmmi10.pfb>{/opt/l
-ocal/share/texmf-dist/fonts/enc/dvips/psnfss/8r.enc}</opt/local/share/texmf-dis
-t/fonts/type1/urw/times/utmri8a.pfb></opt/local/share/texmf-dist/fonts/type1/ur
-w/times/utmbi8a.pfb></opt/local/share/texmf-dist/fonts/type1/bluesky/cm/cmss10.
-pfb></opt/local/share/texmf-dist/fonts/type1/urw/times/utmr8a.pfb></opt/local/s
-hare/texmf-dist/fonts/type1/urw/times/utmb8a.pfb>
-Output written on voldemort.pdf (12 pages, 768364 bytes).
+ 36 words of extra memory for PDF output out of 65536
+</opt/local/share/texmf-dist/fonts/type1/
+bluesky/cm/cmsy7.pfb></opt/local/share/texmf-dist/fonts/type1/bluesky/cm/cmr5.p
+fb></opt/local/share/texmf-dist/fonts/type1/bluesky/cm/cmmi5.pfb></opt/local/sh
+are/texmf-dist/fonts/type1/bluesky/cm/cmsy5.pfb></opt/local/share/texmf-dist/fo
+nts/type1/bluesky/cm/cmsy10.pfb></opt/local/share/texmf-dist/fonts/type1/bluesk
+y/cm/cmtt10.pfb></opt/local/share/texmf-dist/fonts/type1/bluesky/cm/cmr7.pfb></
+opt/local/share/texmf-dist/fonts/type1/bluesky/cm/cmtt8.pfb></opt/local/share/t
+exmf-dist/fonts/type1/bluesky/cm/cmr10.pfb></opt/local/share/texmf-dist/fonts/t
+ype1/bluesky/cm/cmsy9.pfb></opt/local/share/texmf-dist/fonts/type1/bluesky/cm/c
+mmi10.pfb>{/opt/local/share/texmf-dist/fonts/enc/dvips/psnfss/8r.enc}</opt/loca
+l/share/texmf-dist/fonts/type1/urw/times/utmri8a.pfb></opt/local/share/texmf-di
+st/fonts/type1/urw/times/utmbi8a.pfb></opt/local/share/texmf-dist/fonts/type1/b
+luesky/cm/cmss10.pfb></opt/local/share/texmf-dist/fonts/type1/urw/times/utmr8a.
+pfb></opt/local/share/texmf-dist/fonts/type1/urw/times/utmb8a.pfb>
+Output written on voldemort.pdf (12 pages, 787944 bytes).
