@@ -1,0 +1,6 @@
+set output 'search.png'
+set term png enhanced font "Vera,11" 
+set grid
+set xlabel "Time in minutes" 
+set ylabel "Latency in ms"
+plot 'data/search' using 1:2 title "Interpolation search" with linespoint, 'data/search' using 1:3 title "Binary search" with linespoint
