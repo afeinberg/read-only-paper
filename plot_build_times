@@ -1,5 +1,6 @@
 set output 'images/build.png'
 set term png enhanced font "Vera,11" 
+set grid
 set log x
 set xtics rotate by 90 
 set xlabel "Input Size in MBs" 
