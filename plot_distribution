@@ -1,19 +1,11 @@
-set output 'distribution.png'
-set term png enhanced font "Vera,11" size 640,768
-set multiplot
+set output 'images/distribution.png'
+set term png enhanced font "Vera,11" 
+set grid 
 set log x
 set log y
 set xtics rotate by -45
 set grid
-set size 1, 0.50
-set xtics (256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536)
-set origin 0.0,0.00
+set xtics (16, 32, 64, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536)
 set xlabel "Value size in bytes" 
 set ylabel "Number of tuples"
-plot 'data/p_d' using 1:2 title "PYMK Distribution"
-set origin 0.0,0.5
-set xtics (16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536)
-set xlabel "Value size in bytes"
-set ylabel "Number of tuples"
-plot 'data/b_d' using 1:2 title "Browsemaps Distribution"
-unset multiplot
+plot 'data/pymk_data_distribution' using 1:2 title "PYMK Distribution", 'data/browsemap_data_distribution' using 1:2 title "Browsemaps Distribution" 
