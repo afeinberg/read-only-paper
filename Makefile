@@ -19,7 +19,6 @@ default: pdf
 dvi: $(DVI)
 ps: $(PS)
 pdf: $(PDF)
-abstract: abstract.text
 
 all: dvi ps pdf abstract
 
@@ -28,7 +27,7 @@ $(PDF): $(SRCS) pre
 ifneq ($(NOOPT),1)
 	$(GS) -dBATCH -dNOPAUSE -sDEVICE=pdfwrite -dPDFSETTINGS=/prepress \
 	-dEmbedAllFonts=true -dSubsetFonts=true -dMaxSubsetPct=100 \
-	-sOutputFile=$(PROJECT).pdf.new -f $(PROJECT).pdf metafile
+	-sOutputFile=$(PROJECT).pdf.new -f $(PROJECT).pdf 
 	pdfopt $(PROJECT).pdf.new $(PROJECT).pdf
 	rm -rf $(PROJECT).pdf.new
 endif
@@ -57,9 +56,6 @@ clean:
 
 wc:
 	@$(DETEX) $(PROJECT) | wc
-
-abstract.text: abstract.tex
-	@$(DETEX) $< | sed '/^abstract/d' | par -70 > $@
 
 .PHONY: clean tidy all default dvi ps pdf wc pre abstract
 

@@ -1,2 +1,6 @@
 *.log
 *.out
+*.bbl
+*.blg
+*latexmk*
+*.aux
