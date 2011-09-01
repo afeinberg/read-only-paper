@@ -1,9 +1,4 @@
-\documentclass[10pt,twocolumn,preprint,natbib,authoryear]{sigplanconf}
-\bibpunct{[}{]}{,}{a}{}{;}
-
-% force pdflatex to use A4 paper
-\setlength{\pdfpagewidth}{210mm}
-\setlength{\pdfpageheight}{297mm}
+\documentclass[10pt,twocolumn,preprint,nonatbib,numbers]{sigplanconf}
 \usepackage{graphicx}
 \usepackage{amsmath}
 \usepackage{moreverb}
@@ -22,22 +17,9 @@
 \title{Project \projectname{} : Batch computed read-only data serving}
 %\subtitle{Subtitle Text, if any}
 
-% For double-blind reviewing:
-\authorinfo{Roshan Sumbaly}
-           {LinkedIn Corp}
-           {rsumbaly@linkedin.com}
-\authorinfo{Jay Kreps}
-           {LinkedIn Corp}
-           {jkreps@linkedin.com}
-\authorinfo{Bhupesh Bansal}
-		   {Groupon}
-           {bbansal@groupon.com}
-\authorinfo{Sam Shah}
-           {LinkedIn Corp}
-           {sashah@linkedin.com}
-
-
-				
+\authorinfo{}
+           {}
+           {}
 \maketitle
 
 % ========================== ABSTRACT ==========================================
@@ -571,11 +553,6 @@ There are still some interesting functionalities that we would like to add to th
 Another important feature that we want to add to the fetch pipeline is the ability to only get one replica of the data from HDFS and then propagate it further on the \projectname{} node. The motivation for this is that most \projectname{} setups might run in a data-center separate from the one running Hadoop (and HDFS). In such a scenario optimizing the amount of data being transferred between data-centers can be a great plus. We have also tried compressing the complete data before storing it in HDFS and then un-compressing this on the fly on the \projectname{} side. Unfortunately this isn't that helpful in scenarios where the users have decided to use the per-key based compression since we are already dealing with compressed data. But copying just one replica of the data would definitely save inter-data-center bandwidth. 
 
 Finally we would definitely like to explore some more index structures which would make lookups faster and can be built in Hadoop easily. In particular a lot of work has been done in the area of cache oblivious trees, like van Emde Boas trees, which requires no knowledge of page size to get optimal cache performance. 
- 
-\acks
-\projectname{} has seen a massive adoption inside LinkedIn. Even though we concentrate on the read-only stores in this paper our read-write based stores have also seen major uptake in usage. We would also like to thank the other \projectname{} developers viz. Alex Feinberg, Lei Gao, Chinmay Sonam and Bhaskar Ghosh for helping grow the system to its current scale. Finally we would like to thank Allen Wittenauer for all the help he's provided to help us run this system. 
-
-\bibliographystyle{eurosys}
 
 \begin{thebibliography}
 \softraggedright
