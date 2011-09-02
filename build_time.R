@@ -1,0 +1,6 @@
+library(ggplot2)
+r <- read.csv("data/build_time", sep="\t")
+p <- melt(r, id=1:2)
+s <- qplot(log(Size), value, data = p, geom =c("point", "line"), shape = variable, fontsize=14, theme_blank, xlab ="Size in GB", ylab ="Time in seconds") + opts(legend.position="top", legend.direction="horizontal") + scale_shape(name="") + scale_x_discrete(name=NULL, "Size") 
+pdf("images/build.pdf", width=5, height=4)
+print(s, newpage=F)

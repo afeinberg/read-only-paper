@@ -3,12 +3,10 @@ LATEXMK=latexmk
 OPTIONS=-g
 DVIPS=dvips
 PS2PDF=ps2pdf
-DETEX=detex
 GS=gs
 NOOPT=1
 
-SRCS=$(wildcard *.tex) $(wildcard *.bib) $(wildcard plots/* images/* \
-	diagrams/*.tex)
+SRCS=$(wildcard *.tex) $(wildcard *.bib) $(wildcard images/*)
 
 DVI=$(PROJECT).dvi
 PS=$(PROJECT).ps
@@ -20,7 +18,7 @@ dvi: $(DVI)
 ps: $(PS)
 pdf: $(PDF)
 
-all: dvi ps pdf abstract
+all: dvi ps pdf 
 
 $(PDF): $(SRCS) pre 
 	$(LATEXMK) $(OPTIONS) -pdf $(PROJECT)
@@ -53,9 +51,6 @@ tidy:
 
 clean:
 	$(LATEXMK) -C $(PROJECT)
-
-wc:
-	@$(DETEX) $(PROJECT) | wc
 
 .PHONY: clean tidy all default dvi ps pdf wc pre abstract
 

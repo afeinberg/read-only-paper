@@ -2,6 +2,7 @@
 \usepackage{graphicx}
 \usepackage{amsmath}
 \usepackage{moreverb}
+\usepackage{natbib}
 
 \begin{document}
 
@@ -37,7 +38,7 @@ In this paper we present a fast serving and storage layer called Project \projec
 Design, Performance
 
 \keywords
-database, low latency, distributed, offline
+database, low latency, distributed, bulk loading, offline index construction
 
 
 % ========================== INTRODUCTION ==========================================
@@ -53,7 +54,7 @@ The rest of the paper has been structured into 5 sections. In Section \ref{sec:r
 
 \section{Related Work}
 \label{sec:related_work}
-The most commonly deployed serving system in various companies is MySQL. The two most used storage engines of MySQL - MyISAM and InnoDB - provide bulk loading capabilities into live system with `LOAD DATA INFILE' statement. MyISAM is the better amongst the two because of its compact on-disk space usage and its ability to delay the re-creation of the index to a time after the load\cite{bulk}.  Unfortunately we still have to deal with the problem of needing lots of memory, which is used for maintaining the special tree-like cache during bulk loading. 
+A very common serving system used in various companies is MySQL. The two most used storage engines of MySQL - MyISAM and InnoDB - provide bulk loading capabilities into live system with `LOAD DATA INFILE' statement. MyISAM is the better amongst the two because of its compact on-disk space usage and its ability to delay the re-creation of the index to a time after the load\cite{bulk}.  Unfortunately we still have to deal with the problem of needing lots of memory, which is used for maintaining the special tree-like cache during bulk loading. 
 %*\cite{http://dev.mysql.com/doc/refman/5.1/en/server-system-variables.html-sysvar_bulk_insert_buffer_size}
 The other big problem with MyISAM storage engine is that it locks the complete table for the duration of the load. Hence all other requests coming in during the bulk load process are queued up. This is definitely not acceptable for web applications in general since this is equivalent to having a down-time.  
 
@@ -86,7 +87,7 @@ Before we start let us define some of the concepts and terms we will use in this
 
 \begin{figure}
   \centering
-    \includegraphics[scale=0.45]{images/arch.png}
+    \includegraphics[scale=0.45]{images/arch.pdf}
   \caption{\projectname{} internal architecture}
   \label{arch}
 \end{figure}
@@ -129,7 +130,7 @@ Figure \ref{hash} is an example of how the two routing strategies would generate
 
 \begin{figure}
   \centering
-    \includegraphics[scale=0.55]{images/hash.png}
+    \includegraphics[scale=0.55]{images/hash.pdf}
   \caption{Hash Ring}
   \label{hash}
 \end{figure}
@@ -188,7 +189,7 @@ Besides running the above stack every node also runs a special service on every 
 
 \begin{figure}
   \centering
-    \includegraphics[scale=0.60]{images/fullstack.png}
+    \includegraphics[scale=0.60]{images/fullstack.pdf}
   \caption{\projectname{} in full stack}
   \label{fullstack}
 \end{figure}
@@ -230,7 +231,7 @@ The following diagram is the structure of our storage engine's data and index fi
 
 \begin{figure}
   \centering
-    \includegraphics[scale=0.45]{images/storage_format.png}
+    \includegraphics[scale=0.45]{images/storage_format.pdf}
   \caption{Chunk file format}
   \label{storage_format}
 \end{figure}
@@ -238,8 +239,9 @@ The following diagram is the structure of our storage engine's data and index fi
 
 We split our data into multiple chunks where every chunk is a pair of data and index file. There are two reasons to split the data into multiple chunks - (a) parallelism achieved on the Hadoop side (b) limitation of Java to memory map files up to a maximum of 2 GB. We build multiple chunks for every partition-replica bucket. We have set a standard naming convention for all our chunk files. It follows the pattern \verb=<partition id>_<replica id>_<chunk id>.= \verb=<data or index>=, where \verb=partition id= is the id of the primary partition and \verb=replica id= is a number between 0 to `replication factor'-1. Once a key hashes to a particular node, we classify it into the correct \verb=partition id= + \verb=replica id= bucket. For example the key in Figure \ref{hash}, present in a store using consistent hashing, would fall into the buckets 11\_0 (on node 2) and 11\_1 (on node 0). 
 
-We then take all the tuples in this bucket and split it up into multiple smaller chunks. The table below shows the various bucket names (where every bucket will contain multiple chunks and each chunk will in turn contain an index and data file) for a store with consistent hash routing and replication factor 2. This assumes that the cluster has the same partition ring topology as shown in Figure \ref{hash}. This bucket granularity was definitely not present in our first iteration since we had initially started by defining a bucket to be only on a per node basis (i.e. multiple chunks stored on a node with no knowledge about partitions). Over time we realized that breaking up the bucket into smaller granularity would help rebalancing. We will describe this in more details in Section \ref{sec:read_only:data_cycle:rebalancing}. 
+We then take all the tuples in this bucket and split it up into multiple smaller chunks. The table \ref{tab:node_to_chunk} below shows the various bucket names (where every bucket will contain multiple chunks and each chunk will in turn contain an index and data file) for a store with consistent hash routing and replication factor 2. This assumes that the cluster has the same partition ring topology as shown in Figure \ref{hash}. This bucket granularity was definitely not present in our first iteration since we had initially started by defining a bucket to be only on a per node basis (i.e. multiple chunks stored on a node with no knowledge about partitions). Over time we realized that breaking up the bucket into smaller granularity would help rebalancing. We will describe this in more details in Section \ref{sec:read_only:data_cycle:rebalancing}. 
 
+\begin{table}
 \begin{center}
     \begin{tabular}{ | c | c | }
     \hline
@@ -250,6 +252,9 @@ We then take all the tuples in this bucket and split it up into multiple smaller
 \hline
     \end{tabular}
 \end{center}
+ 	\caption{Node to chunk mapping}
+ 	\label{tab:node_to_chunk}
+\end{table}
 
 
 The index file is a compact structure containing sorted upper 8 bytes of the MD5 of the key followed by the 4 byte offset of the corresponding value in the data file. The primary reason to go for this simple sorted structure, in comparison to various previous complicated page aware structures described in literature, was to keep the build process simple. Since we wanted to leverage Hadoop for our index construction we had to face the inherent limitation that generally mapper and reducer tasks do not have much memory. Building complicated structures then would require us to explore various fancy external tree building functions thereby making the process very error prone. Preliminary tests also showed that the index files were generally order of magnitude smaller than the data files. Hence we could safely assume that they would fit into page cache easily. 
@@ -301,6 +306,10 @@ Now deploying a new data version is as simple as starting a new version folder w
 Construction of the chunk files for all \projectname{} nodes is a single MapReduce job. The following is the pseudo-code representation of the complete job. 
 
 \scriptsize
+
+
+
+
 \label{MapReduce for Chunk generation}
 \begin{verbatimtab}
 # numChunks - Number of chunks per bucket
@@ -394,7 +403,7 @@ Figure \ref{cycle} shows the complete data cycle that eventually results in new 
 
 \begin{figure}
   \centering
-    \includegraphics[scale=0.60]{images/cycle.png}
+    \includegraphics[scale=0.60]{images/cycle.pdf}
   \caption{Read-only data cycle}
   \label{cycle}
 \end{figure}
@@ -436,8 +445,9 @@ Rebalancing is a major feature which allows \projectname{} to easily add or reba
 		\end{itemize}
 \end{itemize}
 
-The rebalancing tool has also been designed to handle failure scenarios elegantly. Failure during a fetch is not a problem since we haven't swapped the data in. But failure during the swap requires us to rollback the cluster topology to the last good cluster topology while also rolling back the data on the successful nodes. Let us end this section by demonstrating a simple example showing the plan generation. We will run this for the same hash ring shown in Figure \ref{hash} with a store using consistent hashing. We introduce a new node (Node 3) to whom we will initially pass the responsibility of partitions 3. The tables below show the new chunk mapping and the plan generated. 
+The rebalancing tool has also been designed to handle failure scenarios elegantly. Failure during a fetch is not a problem since we haven't swapped the data in. But failure during the swap requires us to rollback the cluster topology to the last good cluster topology while also rolling back the data on the successful nodes. Let us end this section by demonstrating a simple example showing the plan generation. We will run this for the same hash ring shown in Figure \ref{hash} with a store using consistent hashing. We introduce a new node (Node 3) to whom we will initially pass the responsibility of partitions 3. Table \ref{tab:new_node_to_chunk} shows the new chunk mapping, while Table \ref{tab:rebalance_plan} shows the simple plan that would be generated as a part of rebalancing. 
 
+\begin{table}
 \begin{center}
     \begin{tabular}{ | c | c | }
     \hline
@@ -449,8 +459,11 @@ The rebalancing tool has also been designed to handle failure scenarios elegantl
 \hline
     \end{tabular}
 \end{center}
+ 	\caption{New node to chunk mapping}
+ 	\label{tab:new_node_to_chunk}
+\end{table}
 
-
+\begin{table}
 \begin{center}
     \begin{tabular}{ | c | c | c | }
     \hline
@@ -459,6 +472,9 @@ The rebalancing tool has also been designed to handle failure scenarios elegantl
 \hline
     \end{tabular}
 \end{center}
+\caption{Rebalancing plan generated}
+\label{tab:rebalance_plan}
+\end{table}
 
 
 
@@ -554,6 +570,8 @@ Another important feature that we want to add to the fetch pipeline is the abili
 
 Finally we would definitely like to explore some more index structures which would make lookups faster and can be built in Hadoop easily. In particular a lot of work has been done in the area of cache oblivious trees, like van Emde Boas trees, which requires no knowledge of page size to get optimal cache performance. 
 
+\bibliographystyle{plainnat}
+\bibliography{voldemort}
 
 \end{document}
 
