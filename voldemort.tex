@@ -10,6 +10,7 @@
 \usepackage{algorithmic}
 \usepackage{paralist}
 \usepackage{ifpdf}
+\usepackage{hyperref}
 \ifpdf
   \usepackage[protrusion=true,expansion]{microtype}
 \else
@@ -113,7 +114,7 @@
 % natbib: reduce the spacing between bibliographical entries
 \setlength{\bibsep}{1pt}
 % natbib: reduce the references font size
-\renewcommand{\bibfont}{\bibsize}
+%\renewcommand{\bibfont}{\bibsize}
 % natbib: change punctuation of citation style
 %\bibpunct{[}{]}{,}{a}{}{;}
 % natbib: make the bibliography a real section, not a section*
@@ -388,9 +389,6 @@ Construction of the chunk files for all \projectname{} nodes is a single MapRedu
 
 \scriptsize
 
-
-
-
 \label{MapReduce for Chunk generation}
 \begin{verbatimtab}
 # numChunks - Number of chunks per bucket
@@ -508,7 +506,7 @@ As engineers iterate on their products there are bound to be changes in the unde
 \subsubsection{Rebalancing}
 \label{sec:read_only:data_cycle:rebalancing}
 
-Rebalancing is a major feature which allows \projectname{} to easily add or rebalance data around on a live cluster without down time. This feature was initially written for the read-write stores but easily fits into the read-only cycle due to the static nature of the data. Our smallest unit of rebalancing is a partition. In other words addition of a new node translates to giving the ownership of some partitions to it. The rebalancing process is run by a rebalancing tool which co-ordinates the full process. Following are the steps that are followed during the addition of a new node :
+Rebalancing is a major feature which allows \projectname{} to easily add or rebalance data around on a live cluster without down time. This feature was initially written for the read-write stores but easily fits into the read-only cycle due to the static nature of the data. Our smallest unit of rebalancing is a partition. In other words addition of a new node translates to giving the ownership of some partitions to it. The rebalancing process is run by a rebalancing tool which co-ordinates the full process. The following are the steps that are followed during the addition of a new node. 
 
 \begin{itemize}
 	\item Provide the rebalancing tool with the future cluster topology metadata.
@@ -516,7 +514,7 @@ Rebalancing is a major feature which allows \projectname{} to easily add or reba
 	\item Do the following steps for every `batch' of primary partitions. The reason behind moving the partition in small batches is that it makes the process checkpoint-able without having to re-fetch too much data. 
 		\begin{itemize}
 			\item Generate intermediate cluster topology metadata which is current cluster topology with changes in ownership of `batch' of partitions moved
-			\item Use intermediate cluster topology metadata to generate a set of steps that need to be run to finish rebalancing. In this process we also need to take care of all the secondary replica movements that might be required due to the primary partition movement. This plan is a set of \verb=[donating node id, stealing node id]= pairs along with the chunk files being moved. 
+			\item Use intermediate cluster topology metadata to generate a set of steps that need to be run to finish rebalancing. In this process we also need to take care of all the secondary replica movements that might be required due to the primary partition movement. This plan is a set of donating node id and stealing node id pairs along with the chunk files being moved. 
 			\item Initiate asynchronous processes (through the administrative service) on all the stealer nodes which then start stealing chunk files from their corresponding donor nodes. The data is copied into the same version directory which is currently serving live traffic. We also make these nodes to go into a `rebalancing state' thereby not allowing any new fetches and swaps from taking place. 
 			
 			Here it is important to note that the granularity of the bucket we selected made this process as simple as just a copy of files. If we had defined a bucket to be on a per node basis i.e. have multiple chunks on a per node basis, we would have had to iterate over all the keys on the node and find the correct key set belonging to the moving partition. Further we would then need to merge this key set with the live serving index on the stealer node's end. 
@@ -548,7 +546,7 @@ The rebalancing tool has also been designed to handle failure scenarios elegantl
 \begin{center}
     \begin{tabular}{ | c | c | c | }
     \hline
-    Stealing Node Id & Donor Node Id & Chunks to steal \\ \hline
+    Stealer Node Id & Donor Node Id & Chunks to steal \\ \hline
     3 &  0 & 3\_0, 2\_1	\\
 \hline
     \end{tabular}
@@ -564,16 +562,17 @@ The rebalancing tool has also been designed to handle failure scenarios elegantl
 \section{Benchmark}
 \label{sec:benchmark}
 
-In this section we will present some experimental numbers on a simulated data-set as well as some of our production numbers on two user facing features viz. `People You May Know' (also called PYMK) and `Viewers of this profile also viewed' (also called Browsemaps). We use two metrics to determine a better system - faster build time and good serving latency. All tests were run on boxes running Linux 2.6.18 with Dual CPU (each having 8 cores running at 2.67 GHz) and 24 GB RAM. We ran MySQL Community Edition version 5.0.27 for the MyISAM tests. Following is some information about the data-sets that we will be using. 
+In this section we will present some experimental numbers on a simulated data-set as well as some of our production numbers on two user facing features viz. `People You May Know' (also called PYMK) and `Viewers of this profile also viewed' (also called Browsemaps). We use two metrics to evaluate our system - faster build time and good serving latency. All tests were run on boxes running Linux 2.6.18 with Dual CPU (each having 8 cores running at 2.67 GHz), 24 GB RAM and 6 RAID 10 drives. For the MyISAM tests we ran MySQL Community Edition version 5.0.27. We start by describing the data-sets we used for our benchmarking. 
 
 \begin{itemize}
 	\item Random data-set : The key is a long between 0 and a varying number. The value is a fixed 1024 bytes size random string. 
-	\item PYMK / Browsemaps data-set : Both of them have member id as their key. The value is a list of integer and float pair for PYMK while a list of 2 integers, a string and a float for Browsemaps. The approximate value size distributions for the two have been shown in Figure \ref{distribution}.  
+	\item PYMK data-set : On logging into our site, our users are presented with recommendations of other users whom they might know and would connect with. This is presented as a store where they key is the logged in user's member id while the value is a list of integer recommended member ids. Figure \ref{distribution} shows the value size distribution for this store. 
+	\item Browsemaps data-set : Browsemaps runs collaborative filtering algorithm on members and shows you similar members when you visit a member's profile. The value is a list of 2 integers, a string and a flot. Similar to PYMK, Figure \ref{distribution} shows the value size distribution for Browsemaps. 
 \end{itemize}
 
 \begin{figure}
   \centering
-    \includegraphics[scale=0.35]{images/data_distribution.pdf}
+    \includegraphics[scale=0.55]{images/data_distribution.pdf}
   \caption{Value size distributions}
   \label{distribution}
 \end{figure}
@@ -588,7 +587,7 @@ The graph in Figure \ref{build} is the build time in seconds for the above three
 
 \begin{figure}
   \centering
-    \includegraphics[scale=0.5]{images/build.pdf}
+    \includegraphics[scale=0.55]{images/build.pdf}
   \caption{Build time vs size of data}
   \label{build}
 \end{figure}
@@ -599,7 +598,7 @@ We first try to understand the performance implications of binary search vs inte
 
 \begin{figure}
   \centering
-    \includegraphics[scale=0.35]{images/search_1node.pdf}
+    \includegraphics[scale=0.55]{images/search_1node.pdf}
   \caption{Search Latency vs Time}
   \label{search}
 \end{figure}
@@ -620,7 +619,7 @@ To test whether the system scales well with the number of boxes, we present the 
 
 \begin{figure}
   \centering
-    \includegraphics[scale=0.35]{images/search_16node.pdf}
+    \includegraphics[scale=0.55]{images/search_16node.pdf}
   \caption{Search Latency vs Data size for 16 nodes}
   \label{16search}
 \end{figure}
@@ -628,12 +627,12 @@ To test whether the system scales well with the number of boxes, we present the 
 
 We finally present the latency numbers for PYMK and Browsemaps on our production cluster in Figure \ref{production}. This shows the average latency on the server side across all nodes immediately after a new data swap. Browsemaps has a high latency primarily because of the data size being larger than that of PYMK.
 
-%\begin{figure*}
-%  \centering
+\begin{figure*}
+  \centering
 %    \includegraphics[scale=0.23]{images/get_latency.pdf}
-%  \caption{Latency vs Time for PYMK and Browsemaps}
-%  \label{production}
-%\end{figure*}
+  \caption{Latency vs Time for PYMK and Browsemaps}
+  \label{production}
+\end{figure*}
 
 
 
