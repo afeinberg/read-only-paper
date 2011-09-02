@@ -169,7 +169,7 @@ Before we start let us define some of the concepts and terms we will use in this
 \begin{figure}
   \centering
     \includegraphics[scale=0.45]{images/arch.pdf}
-  \caption{\projectname{} internal architecture}
+  \caption{\projectname{} architecture stack}
   \label{arch}
 \end{figure}
 
@@ -573,7 +573,7 @@ In this section we will present some experimental numbers on a simulated data-se
 
 \begin{figure}
   \centering
-    \includegraphics[scale=0.35]{images/distribution.png}
+    \includegraphics[scale=0.35]{images/data_distribution.pdf}
   \caption{Value size distributions}
   \label{distribution}
 \end{figure}
@@ -588,7 +588,7 @@ The graph in Figure \ref{build} is the build time in seconds for the above three
 
 \begin{figure}
   \centering
-    \includegraphics[scale=0.35]{images/build.png}
+    \includegraphics[scale=0.5]{images/build.pdf}
   \caption{Build time vs size of data}
   \label{build}
 \end{figure}
@@ -599,7 +599,7 @@ We first try to understand the performance implications of binary search vs inte
 
 \begin{figure}
   \centering
-    \includegraphics[scale=0.35]{images/search_1node.png}
+    \includegraphics[scale=0.35]{images/search_1node.pdf}
   \caption{Search Latency vs Time}
   \label{search}
 \end{figure}
@@ -620,7 +620,7 @@ To test whether the system scales well with the number of boxes, we present the 
 
 \begin{figure}
   \centering
-    \includegraphics[scale=0.35]{images/search_16node.png}
+    \includegraphics[scale=0.35]{images/search_16node.pdf}
   \caption{Search Latency vs Data size for 16 nodes}
   \label{16search}
 \end{figure}
@@ -628,12 +628,12 @@ To test whether the system scales well with the number of boxes, we present the 
 
 We finally present the latency numbers for PYMK and Browsemaps on our production cluster in Figure \ref{production}. This shows the average latency on the server side across all nodes immediately after a new data swap. Browsemaps has a high latency primarily because of the data size being larger than that of PYMK.
 
-\begin{figure*}
-  \centering
-    \includegraphics[scale=0.23]{images/get_latency.png}
-  \caption{Latency vs Time for PYMK and Browsemaps}
-  \label{production}
-\end{figure*}
+%\begin{figure*}
+%  \centering
+%    \includegraphics[scale=0.23]{images/get_latency.pdf}
+%  \caption{Latency vs Time for PYMK and Browsemaps}
+%  \label{production}
+%\end{figure*}
 
 
 
@@ -651,7 +651,7 @@ Another important feature that we want to add to the fetch pipeline is the abili
 
 Finally we would definitely like to explore some more index structures which would make lookups faster and can be built in Hadoop easily. In particular a lot of work has been done in the area of cache oblivious trees, like van Emde Boas trees, which requires no knowledge of page size to get optimal cache performance. 
 
-\bibliographystyle{plainnat}
+\bibliographystyle{acm}
 \bibliography{voldemort}
 
 \end{document}

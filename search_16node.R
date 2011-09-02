@@ -1,0 +1,8 @@
+library(ggplot2)
+r <-read.csv("data/search_16node", sep="\t")
+uniform <- melt(r, 1, 3)
+zipfian <- melt(r, 1, 5)
+c <- rbind(uniform, zipfian)
+s <- qplot(log(GB), value, data = c, shape = variable, geom = c("line", "point"), fontsize=14, theme_blank, xlab ="Output size in GB", ylab ="Median Latency in ms") + opts(legend.position="top", legend.direction="horizontal") + scale_shape(name="")
+pdf("images/search_16node.pdf", width=5, height=4)
+print(s, newpage=F)

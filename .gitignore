@@ -4,3 +4,4 @@
 *.blg
 *latexmk*
 *.aux
+*.RData

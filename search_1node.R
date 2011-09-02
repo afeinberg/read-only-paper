@@ -1,0 +1,8 @@
+library(ggplot2)
+r <-read.csv("data/search_1node", sep="\t")
+interpolation <- melt(r, 1,2)
+binary <- melt(r, 1, 3)
+c <- rbind(interpolation,binary)
+s <- qplot(Minutes, value, data = c, geom=c("point", "line"), shape = variable, fontsize=14, theme_blank, xlab ="Time in minutes", ylab ="Latency in ms") + opts(legend.position="top", legend.direction="horizontal") + scale_shape(name="")
+pdf("images/search_1node.pdf", width=5, height=4)
+print(s, newpage=F)
