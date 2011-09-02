@@ -1,28 +1,127 @@
-\documentclass[10pt,twocolumn,preprint,nonatbib,numbers]{sigplanconf}
-\usepackage{graphicx}
+\documentclass[twocolumn]{article}
+\usepackage{usenix}
+\usepackage[final]{graphicx}
+\usepackage[labelfont=bf,font=footnotesize,labelsep=period,
+    aboveskip=4pt plus 0.2pt,belowskip=4pt plus 0.2pt]{caption,subfig}
 \usepackage{amsmath}
+\usepackage[small,bottomtitles,compact]{titlesec}
+\usepackage[comma,numbers,sort&compress]{natbib}
+\usepackage{booktabs,tabularx,multirow}
+\usepackage{algorithmic}
+\usepackage{paralist}
+\usepackage{ifpdf}
+\ifpdf
+  \usepackage[protrusion=true,expansion]{microtype}
+\else
+  \usepackage{microtype}
+\fi
 \usepackage{moreverb}
-\usepackage{natbib}
+
+\newcommand{\projectname}{Spock}
+\newcommand{\doctitle}{Project \projectname{} : Batch computed read-only data serving}
+
+\title{\doctitle}
+\author{}
+\date{}
+
+\hypersetup{
+    pdftitle = {\doctitle},
+    pdfauthor = {},
+    pdfsubject = {FAST 2012},
+    pdfcreator = {LaTeX},
+    bookmarksopen,
+    bookmarksnumbered=true,
+    pdfstartview={Fit},
+    colorlinks=true,
+    linkcolor=black,
+    citecolor=black,
+    filecolor=black,
+    urlcolor=black,
+}
+
+% loosen latex's float placement parameters
+\renewcommand{\topfraction}{.99}
+\renewcommand{\bottomfraction}{.8}
+\renewcommand{\textfraction}{.25}
+\renewcommand{\floatpagefraction}{.90}
+\renewcommand{\dbltopfraction}{.99}
+\renewcommand{\dblfloatpagefraction}{.99}
+\setcounter{topnumber}{9}
+\setcounter{bottomnumber}{9}
+\setcounter{totalnumber}{20}
+\setcounter{dbltopnumber}{9}
+
+% change default float positioning
+\makeatletter
+\def\fps@figure{t} 
+\def\fps@table{t} 
+\makeatother 
+
+% make the space between the body text and a figure's caption tighter
+\setlength{\textfloatsep}{4pt plus 1pt minus 3pt}
+\setlength{\dbltextfloatsep}{4pt plus 1pt minus 3pt}
+
+% make the space between adjacent floats tighter
+\setlength{\floatsep}{3pt plus 1pt minus 1pt}
+\setlength{\dblfloatsep}{3pt plus 1pt minus 1pt}
+
+
+% subfig: tighter spacing
+\DeclareCaptionOption{verytight}[]{%
+    \captionsetup{farskip=0pt,topadjust=0pt,captionskip=0.2pt,%
+    nearskip=0pt,margin=0pt}}
+\captionsetup[subfloat]{verytight}
+
+% paralist: fix up list spacing
+\setlength{\pltopsep}{1.5pt plus 0.4pt minus 0.3pt}
+\setlength{\plitemsep}{1pt plus 0.2pt minus 0.2pt}
+
+% this will reduce the number of overfull hbox's by being more
+% aggressive with paragraph formatting
+\tolerance=5000
+\hbadness=4000
+\emergencystretch=1em
+\hfuzz=.1pt
+\vfuzz=\hfuzz
+\widowpenalty=1000
+\clubpenalty=1000
+
+% macros that'll increase/decrease the page by a line.
+\newcommand{\shortpage}{\enlargethispage{-\baselineskip}}
+\newcommand{\longpage}{\enlargethispage{\baselineskip}}
+
+% use \Nopagebreak before lists if you don't want them the previous
+% paragraph to break across a page.
+\makeatletter
+\newcommand\Nopagebreak{\@nobreaktrue\nopagebreak}
+\makeatother 
+
+\makeatletter
+\newcommand\bibsize{%
+   \@setfontsize\footnotesize\@viiipt{8.75}%
+   \abovedisplayskip 6\p@ \@plus2\p@ \@minus4\p@
+   \abovedisplayshortskip \z@ \@plus\p@
+   \belowdisplayshortskip 3\p@ \@plus\p@ \@minus2\p@
+   \def\@listi{\leftmargin\leftmargini
+               \topsep 3\p@ \@plus\p@ \@minus\p@
+               \parsep 2\p@ \@plus\p@ \@minus\p@
+               \itemsep \parsep}%
+   \belowdisplayskip \abovedisplayskip
+}
+\makeatother
+
+% natbib: reduce the spacing between bibliographical entries
+\setlength{\bibsep}{1pt}
+% natbib: reduce the references font size
+\renewcommand{\bibfont}{\bibsize}
+% natbib: change punctuation of citation style
+%\bibpunct{[}{]}{,}{a}{}{;}
+% natbib: make the bibliography a real section, not a section*
+%\renewcommand{\bibsection}{\section{\refname}}
 
 \begin{document}
 
-\conferenceinfo{WXYZ '05}{date, City.} 
-\copyrightyear{2005} 
-\copyrightdata{[to be supplied]} 
-
-\newcommand{\projectname}{Spock}
-
-%\titlebanner{Submitted to EuroSys'11}        % These are ignored unless
-%\preprintfooter{short description of paper}   % 'preprint' option specified.
-
-\title{Project \projectname{} : Batch computed read-only data serving}
-%\subtitle{Subtitle Text, if any}
-
-\authorinfo{}
-           {}
-           {}
 \maketitle
-
 % ========================== ABSTRACT ==========================================
 \begin{abstract}
 Many internet based companies have started building analytics products backed by computationally intensive data-mining algorithms. One of the important system requirements for these products is the ability to present these results to the end user under strict latency constraints. A good systems practice to achieve this is by decoupling the computation layer from the serving layer. MapReduce paradigm, through the open-source solution Hadoop, has seen a wide spread adoption as the perfect solution for the computation layer. But it is the current serving layers which haven't been able to keep up and deal with the consumption of these massive data-sets without affecting serving performance. 
@@ -30,25 +129,7 @@ Many internet based companies have started building analytics products backed by
 In this paper we present a fast serving and storage layer called Project \projectname{} which addresses this problem by offloading the index construction to the computation layer. We have built and open-sourced this distributed and fault-tolerant layer with the ability to serve both read-write and read-only batch computed data. In this paper we will focus primarily on the read-only data serving cycle and talk about how it has helps LinkedIn serve multiple TBs of data regularly. With its very simple key-value based interface \projectname{} today powers most of LinkedIn's social recommendation products. 
 \end{abstract}
 
-\category{D.4.2}{Operating Systems}{Storage Management}
-\category{H.3.3}{Information Search and Retrieval}{Information Storage}
-\category{H.3.3}{Information Search and Retrieval}{Information Search and Retrieval}
-
-\terms
-Design, Performance
-
-\keywords
-database, low latency, distributed, bulk loading, offline index construction
-
-
-% ========================== INTRODUCTION ==========================================
-\section{Introduction}
-\label{sec:introduction}
-The product data cycle of a typical consumer web company consists of a continuous cycle of three phases - data collection, processing and finally serving. The data collection phase deals with gathering raw events like user activity, shares, etc. from various storage solutions as well as logging systems. The ability to horizontally scale this layer with the increase in number of data sources is a tough problem and has been solved in the form of various distributed aggregation systems. Some examples of these include LinkedIn's Kafka\cite{kafka}, Facebook's Scribe\cite{scribe} and Cloudera's Flume\cite{flume}. Besides providing access to numerous data-sources these systems also provide pluggable sink interfaces, in particular the ability to push the data into batch processing systems like Hadoop (in particular HDFS)\cite{hadoop}. The Hadoop ecosystem then in-turn provides a diverse offering of query languages thereby providing the ability to run complex product driven algorithms as batch jobs. The size of the output generated by these jobs can end up being really massive. For example in the context of social networks, most algorithms tend to derive relationships between items (where items could be users or any other important facet). This sparse relationship data can get really huge when dealing with millions of items. The end goal of most of this processing is to surface insights which can then be provided back to the user. For the same we need a system which is capable of consuming this batched data while still serving the existing in-coming requests with minimum performance hit. 
-
-In this paper we talk about our solution for the last phase of this cycle, called Project \projectname{}, and how it fits into our product ecosystem. The tricky part of this system is the efficient movement of large amounts of the data, especially since we have constraints to refresh these `insights' on a near daily basis. At LinkedIn our largest cluster serves multiple TBs of data, while loading around 3 TBs of new data to the site every day. Another important feature that we wanted our system to support was the ability to deliver results under failure scenarios. We also built the system with horizontally scalability in mind so as to support addition of new products immediately. \projectname{} has been running in production at LinkedIn for the past 2 years and has successfully been serving various user-facing features like `People you may know', `LinkedIn Skills' and `Who viewed my profile'. One of the reasons behind its success and quick adoption within the company has been its pluggable architecture which makes it easy to test. Also having a simple key-value based API has allowed our engineers to quickly iterate thereby now resulting in over 100 features (stores) on our largest cluster.
-
-The rest of the paper has been structured into 5 sections. In Section \ref{sec:related_work} we talk about some of the existing solutions and how it compares with \projectname{}'s design. The next section, Section \ref{sec:system_architecture},  talks about our system architecture and its evolution. \projectname{} is heavily inspired from Amazon's Dynamo\cite{dynamo} and was hence initially designed to only support the fast online read/write load. But its extensible storage layer allowed us to quickly build our own custom read-only storage engine and integrate with the offline data cycle. Section \ref{sec:read_only} goes into details about the storage engine specifics and the various design decisions we made while building it. In Section \ref{sec:benchmark} we give details about our experiences while using \projectname{} at LinkedIn, along with some performance results. We finally discuss some of our future work and conclude in Section \ref{sec:conclusion}. 
+\input intro.tex
 
 % ========================== RELATED WORK ==========================================
 
