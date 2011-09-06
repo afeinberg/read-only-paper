@@ -136,36 +136,31 @@
 
 \section{Related Work}
 \label{sec:related_work}
-A very common serving system used in various companies is MySQL. The two most used storage engines of MySQL - MyISAM and InnoDB - provide bulk loading capabilities into live system with `LOAD DATA INFILE' statement. MyISAM is the better amongst the two because of its compact on-disk space usage and its ability to delay the re-creation of the index to a time after the load\cite{bulk}.  Unfortunately we still have to deal with the problem of needing lots of memory, which is used for maintaining the special tree-like cache during bulk loading. 
+A very common serving system used in various companies is MySQL\cite{mysql}. The two most used storage engines of MySQL - MyISAM\cite{myisam} and InnoDB\cite{innodb} - provide bulk loading capabilities into a live system with the \sql{LOAD DATA INFILE} statement. MyISAM provides a compact on-disk structure and the ability to delay re-creation of the index after the load\cite{bulk}.  Unfortunately it requires considerable amount of memory to maintain a special tree-like cache during bulk loading. 
 %*\cite{http://dev.mysql.com/doc/refman/5.1/en/server-system-variables.html-sysvar_bulk_insert_buffer_size}
-The other big problem with MyISAM storage engine is that it locks the complete table for the duration of the load. Hence all other requests coming in during the bulk load process are queued up. This is definitely not acceptable for web applications in general since this is equivalent to having a down-time.  
+Further MyISAM storage engine locks the complete table for the duration of the load thereby resulting in queued requests. On the other hand, InnoDB's on-disk structure has a massive disk utilization. Also bulk loading into InnoDB is order of magnitudes slower than MyISAM. 
+%*\cite{http://blogs.oracle.com/carriergrademysql/entry/tips_for_bulk_loading}
 
-A lot of work has also been done to add bulk loading ability to some new shared-nothing cluster\cite{sharednothing} databases similar to \projectname{}. In \cite{silberstein} tackles the problem of bulk insertion into range partitioned tables in PNUTS \cite{pnuts} by adding another \emph {planning phase} to gather more statistics for the movement. Another paper from the same team \cite{pnutsbatch} shows how they used Hadoop to batch insert data faster into PNUTS.
+There is considerable work done to add bulk loading ability to new shared-nothing cluster\cite{sharednothing} databases similar to \projectname{}. \cite{silberstein} tackles the problem of bulk insertion into range partitioned tables in PNUTS\cite{pnuts} by adding another \emph {planning phase} to gather more statistics for the movement. Another paper from the same team \cite{pnutsbatch} shows how they used Hadoop to batch insert data faster into PNUTS. These approaches try to optimize the bulk updates on the indexes serving live traffic. 
 
-Most of the approaches above try to optimize the bulk updates on the same indexes which are serving live traffic as well. Since we cater to static data-sets that require a complete change of the full data-set the approach we adopted was the construction of the full index offline. This alleviates the problem of us sharing any resources (like CPU and memory) with the index which is serving the live traffic. Usage of MapReduce for this offline construction has actually been a well researched idea with implementations in various production systems. The first idea of this offline construction originated in the various search systems, like Katta\cite{katta} and \cite{mika}. These search layers have hooks which trigger builds on Hadoop to generate indexes and on completion pull the indices to serve search requests. This idea has also been extended to various databases. Both \cite{konstantinou} and \cite{barbuzzi} suggested building HFiles (equivalent to SSTable files, a persistent immutable map data structure, from Google's BigTable \cite{bigtable}) offline in Hadoop and then shipping them over to be consumed immediately by HBase\cite{hbase}. This unconventional method hence bypasses the client API there-by getting rid of the problems of buffering, etc. which affects the write path. The same approach has been adopted by Cassandra\cite{cassandra} in its new \emph{sstableloader}\cite{cassandra_bulk} functionality. In general these approaches definitely alleviate the cluster from sudden memory usage pattern changes. 
+In \projectname{} we intend to cater to only static data-sets that require a complete change of the full data-set. Hence we can construct the full index offline alleviating the problem of sharing resources (like CPU and memory) while serving the live traffic. Usage of MapReduce for this offline construction has implementations in production systems such as various search systems, like Katta\cite{katta} and \cite{mika}. These search layers trigger builds on Hadoop to generate indexes, and on completion pull the indices to serve search requests. 
 
-But all of the above solutions don't solve one very important use case of ours. The general development pattern that we've seen for data products is that engineers come up with new algorithm tweaks and then push out the corresponding data changes in steps, while continuously monitoring their metrics. The problem kicks in when a new data load is resulting in a major drop in metrics. In such a scenario having to run a batch Hadoop job to bulk load new data back in would be very time-consuming. Our storage layout tries to solve this problem by providing some form of rollback mechanism. 
- 
-From an architecture perspective, \projectname{} falls into the league of many previous P2P storage systems. There have been various structured DHTs, like Chord\cite{chord} and Pastry\cite{pastry}, which provide O(log N) lookup. We are more inspired by Dynamo and Beehive\cite{beehive} which tries to decrease the variance in latency due to multi-hop routing by saving more state and providing lookups in O(1). Similar to Dynamo, \projectname{} also supports per tuple based replication for availability purposes. Updating all replicas is easy in the read-only batch scenario since these are pre-computed and then loaded into \projectname{} at once. To make replica updates fast in read-write scenario we allow our updates to some of the replicas of a key to be asynchronous. Network partitions or server failures during these asynchronous updates can result in inconsistencies between replicas. To solve this problem we version every replica and then delegate any resolution to the application during a $get$. This application level resolution has been inspired by previous work done by Bayou\cite{bayou}. 
+This approach has also been extended to various databases. \cite{konstantinou} and \cite{barbuzzi} suggested building HFiles (equivalent to SSTable files, a persistent immutable map data structure, from BigTable \cite{bigtable}) offline in Hadoop then shipping them to be consumed immediately by HBase\cite{hbase}. This unconventional method bypasses the client API alleviating the problems of buffering that affects the write path. The same approach has been adopted by Cassandra\cite{cassandra} in its new \emph{sstableloader}\cite{cassandra_bulk} functionality. In general, these approaches alleviate the cluster from sudden memory usage pattern changes. These solutions don't solve one very important use case of ours. In the scenario of a bad data push having the ability to instantaneously rollback to a previous good state is important. The only way to rollback the data for the above approaches would be to re-run the time consuming batch Hadoop job.
 
+From an architecture perspective, \projectname{} has been inspired from various previous DHT storage systems. Unlike the previous DHT systems, like Chord\cite{chord}, which provide O(log N) lookup, our lookups are O(1) since we store the complete cluster topology on every node. This allows our clients to bootstrap from a random node and then direct requests to exact destination nodes. Similar to Dynamo\cite{dynamo}, \projectname{} also supports per tuple based replication for availability purposes. Updating all of these replicas is effortless in the batch scenario since they are pre-computed and then loaded into a \projectname{} cluster at once. 
 
 % ========================== SYSTEM ARCHITECTURE ==========================================
 \section{System Architecture}
 \label{sec:system_architecture}
 
-Before we start let us define some of the concepts and terms we will use in this paper. A \projectname{} \emph{cluster} can contain multiple \emph{nodes} (or \emph{servers}). Each server has a unique id associated with it. All the nodes in the cluster store the same number of \emph{stores} - which correspond to database tables. General usage patterns have shown that a site-facing feature may map to either one store or multiple stores. For example, a feature dealing with group recommendation may map to two stores - one storing member id to recommended group ids and second storing a group id to their corresponding description. Every store has the following list of configurable parameters:
+A \projectname{} \emph{cluster} can contain multiple \emph{nodes}, each with a unique id. All the nodes in the cluster store the same number of \emph{stores} - which correspond to database tables. General usage patterns have shown that a site-facing feature may map to either one store or multiple stores. For example, a feature dealing with group recommendation will map to two stores: one recording member id to recommended group ids and second recording a group id to their corresponding description. Every store has the following list of configurable parameters, which are identical to Dynamo's parameters. 
 \begin{itemize}
-	\item \emph {Replication factor} - Number of servers onto which each key-value tuple is replicated
-	\item \emph {Required reads} - Number of servers which we read from in parallel during a $get$ before declaring a success
-	\item \emph {Required writes} - Number of server responses we block for before declaring success during a $put$
-	\item \emph {Key/Value serializer and compression} - \projectname{} can have different serialization for the key and value. The various formats that we support are Avro, Protocol buffers, Thrift and Custom binary JSON. The most used format for read-only stores is our custom binary JSON format. \projectname{} also support per-tuple based compression which can be applied to key and/or value. The serialization / compression is completely dealt by a component which resides on the client side with the server only dealing with raw byte arrays. The only exception to this is a relatively new feature called `server side transforms', which will be further discussed in Section \ref{sec:system_architecture:system_components:client_api}. 
+	\item \emph {Replication factor} ($N$) - Number of nodes onto which each key-value tuple is replicated
+	\item \emph {Required reads} ($R$) - Number of nodes which we read from in parallel during a $get$ before declaring a success
+	\item \emph {Required writes} ($W$) - Number of node responses we block for before declaring success during a $put$
+	\item \emph {Key/Value serializer and compression} - \projectname{} can have different serialization schema for key and value. For our custom batch data we use our own custom binary JSON format. \projectname{} also supports per-tuple based compression that can be applied to either key, or value, or both. The serialization / compression is completely dealt by a component which resides on the client side with the server only dealing with raw byte arrays. The only exception to this is a relatively new feature called `server side transforms', which will be further discussed later. 
+	\item \emph {Storage type} - \projectname{} supports various read-write storage engine formats: Berkeley DB Java Edition, in-memory hash map and MySQL. We also support our own custom read-only storage engine, which is the focus of this paper.  
 \end{itemize}
-
-
-% ========================== SYSTEM ARCHITECTURE - SYSTEM COMPONENTS ==========================================
-
-\subsection{System components}
-\label{sec:system_architecture:system_components}
 
 \begin{figure}
   \centering
@@ -174,16 +169,11 @@ Before we start let us define some of the concepts and terms we will use in this
   \label{arch}
 \end{figure}
 
+\projectname{} has a pluggable architecture as shown in Figure \ref{arch}. Each box represents a module, all of which share the same code interface. Every module has exactly one functionality, which we'll explain in the following sub-sections, making it easy to interchange modules and place them in any order. For example, we can have the routing module on either the client side or the server side. Functional separation at the module level also allows us to easily mock these modules for testing purposes. One of the most common use of this can be found in our unit tests where we mock the storage layer to use an in-memory hash map based engine for quick results.  
 
-Since \projectname{} has been inspired from Amazon's Dynamo paper, we have a similar pluggable architecture. Figure \ref{arch} shows the high level architecture of \projectname{}. Each box represents a module, all of which share the same simple code interface. Every module has exactly one functionality, which we'll explain in the following sub-sections. This type of layering makes it easy to interchange modules and place them in any order. For example we can have the routing module on either the client side or the server side. Functionality separation at module level also allows us to easily mock these modules for testing purposes. One of the most common use of this can be found in our unit tests where we mock the storage layer to use an in-memory hash map based engine for quick results.  
+Most of our modules have been motivated from the original Dynamo paper. But since \projectname{}, like Dynamo, was initially built only for read-write operations we also explain how we had to modify these modules for the batch scenario. Starting from the top our client has a simple $get$ and $put$ API as shown in Figure \ref{clients}. We do not support complex operations like joins, foreign key constraints, etc. The $put$ operations throw an error for the read-only storage engine since we only support bulk loads into them. 
 
-% ========================== SYSTEM ARCHITECTURE - SYSTEM COMPONENTS - CLIENT API ==========================================
-
-\subsubsection {Client API }  
-\label{sec:system_architecture:system_components:client_api}
-
-Starting from the top our client has a simple $get$ and $put$ API with no support for complex operations like joins, foreign key constraints, etc. Here are the functions that we provide. 
-
+\begin{figure}
 \scriptsize
 \begin{verbatim}
 VectorClock<V> get (K key)
@@ -193,86 +183,55 @@ put (K key, VectorClock<V> value, T transform)
 \end{verbatim}
 \normalsize
 
-The first two functions are simple except we version every tuple with a vector clock (more about this in Section \ref{sec:system_architecture:system_components:conflict_resolution}). The next two functions show a very powerful feature in \projectname{} which allows you to run a transform / function on your data when it is on the server side. Correctly using this can help us in saving some network bandwidth by transferring only the required parts of a large value. A common example of this is when we have a list of entities as the value. We can then run a transformed $get$ to only retrieve a sub-list or a transformed $put$ to append an entity to your list. 
+\caption{Operations supported by clients}
+  \label{clients}
+\end{figure}
 
-% ========================== SYSTEM ARCHITECTURE - SYSTEM COMPONENTS - ROUTING LAYER ==========================================
 
-\subsubsection {Routing layer }  
-\label{sec:system_architecture:system_components:routing_layer}
 
-Before we talk about conflict resolution it is important we understand how routing and replica assignment works. Since \projectname{} can be thought of as a massive hash table we need a way to partition the data across the multiple servers. The best partitioning implementation would be one which would split the `hot' set of data into minute chunks and spread them across such that they fit in memory on the individual servers. Also server failures, maintenance or just being overloaded are common scenarios. In such cases we definitely don't want our clients to stop serving data. This motivates the need to also replicate the data onto multiple servers. 
+During a $put$ to one of the read-write storage engines, we update some replicas of a key asynchronously and allow some failures. Due to common network partitions, we need the ability to version every tuple so as to resolve any conflicts later during $get$s. For the same we use the concept of vector clocks \cite{lamport} as described in the Dynamo paper. In the read-only scenario we do not need the vector clocks since the only way to update data is by bulk loading. Further since our bulk loading operation is atomic we thereby update all the replicas of a key at once.
 
-The Dynamo paper solved both these problem by using `virtual nodes' along with consistent hashing. The initial approach they took was to visualize the integer hash values as a ring beginning at 0 and circling around to some max value (if we use MD5 as our hash, 128 bits = 2$^{128}$-1). Then each node is assigned an integer which is in turn hashed into this ring multiple times (each location of it is called a token). Then each node becomes responsible for the region between its token and the predecessor token (belonging to another node) on the ring. A key is assigned to a node by hashing the key to yield its position in the ring and then jumping the ring clockwise to find the first token (and hence node) with a greater hash value. Similarly the replicas are decided by jumping further till you find `replication factor' (\verb=N=) number of tokens belonging to different nodes. This list of nodes is called the `preference list' for the key. This consistent hashing approach has the advantage that if a node goes down the affected keys are only ones hashed to regions close to the tokens belonging to the dead node. The disadvantage is that we may result in unequal key ranges because of the uneven hashing of the tokens thereby resulting in a skew. 
+The next two functions show a very powerful feature in \projectname{} which allows you to run a transform / function on your data when it is on the server side. Correctly using this can help us in saving some network bandwidth by transferring only the required parts of a large value. A common example of this is when we have a list of entities as the value. We can then run a transformed $get$ to only retrieve a sub-list or a transformed $put$ to append an entity to your list. 
 
-To solve this problem the better approach is to instead split the hash ring into equal size `partitions' and then assign these partitions to nodes. We share this ring with all the stores, which means changes in the ring require us to change all the stores. Now to generate the preference list we first hash the key to a range belonging to a partition and then continue jumping the ring clockwise till we find \verb=N=-1 other partitions belonging to different nodes. This equal sized range based approach helps solve the imbalance key range problem. It also indirectly helps in data-management (as further discussed in Section \ref{sec:read_only:data_cycle:rebalancing}) since having segregated logical file groups for a partition can help with rebalancing. 
+The next module in the architecture deals with conflict resolution for read-write stores. This module deals with the various conflicting versions of a tuple and finally returns one version. This module can easily be extended by the user to write custom application specific resolution logic. This resolution problem does not apply for read-only stores since the replicas of a key in these stores are always in sync. Similarly the `repair mechanism' layer is used only by the read-write stores to bring the data back to a consistent state. \projectname{} provides two consistency mechanisms: read repair and hinted handoff. Read repair picks the versioned tuple from the conflict resolution module during read-time and updates the inconsistent replicas asynchronously. The other consistency mechanism, hinted handoff, is triggered during write time. If during a $put$ we find that some of the destination nodes are down (and we have satisfied $W$ replicas) the client triggers an asynchronous write to a special store called `slop store' on one of the live nodes. We write a `hint' to this store - where a hint contains the node id of the down node along with the updated value that it missed. We then have a periodic background job running on every node which tries to push these `hints' out to the down nodes.
 
-Since our routing layer is customizable it was easy to plug in another variant of the above consistent hashing algorithm to support routing in multiple data-center environment. For the same we start by grouping nodes into logical clusters that we call `zones'. A zone in the real world can be a data-center, a rack or just a group of nodes close together. Besides this we have a `zone proximity list' which contains information regarding zone distances (For example, Zone A is closer to Zone B than Zone C). Now we provide the user the ability to decide how many replicas they want per zone and then while generating the preference list jump the ring to find partitions belonging to different nodes and zones. Once the routing module generates the preference list it reorders it depending on the proximity list of the zone it is present in. This enables us to make sure requests first go to local zones instead of remote zones. 
-
-Figure \ref{hash} is an example of how the two routing strategies would generate different preference lists for the same key.  
+Since \projectname{} can be thought of as a massive hash table we need a way to partition the data across the multiple servers. The `routing' module deals with partitioning as well as replication. Our partitioning scheme is similar to Dynamo's `virtual nodes' along with consistent hashing approach. We split our hash ring into equal size `partitions' and then assign these partitions to nodes. We share this ring with all the stores, which means changes in the ring require us to change all the stores. Now to generate the `preference list' (list of node ids where the replicas will be stored), we first hash the key to a range belonging to a partition and then continue jumping the ring clockwise till we find $N$-1 other partitions belonging to different nodes. Since our replication strategy is customizable it was easy to plug in another variant of the above algorithm to support routing in multiple data-center environment. We start by grouping nodes into logical clusters that we call `zones'. A zone can map to a data-center, a rack or just a group of nodes close together. Besides this we have a `zone proximity list' which contains information regarding zone distances (For example, Zone A is closer to Zone B than Zone C). Now we provide the user the ability to decide how many replicas they want per zone and then while generating the preference list jump the ring to find partitions belonging to different nodes and zones. Once the routing module generates the preference list it reorders it depending on the proximity list of the zone it is present in. This enables us to make sure requests first go to local zones instead of remote zones. Figure \ref{hash} is an example of how the two replication strategies would generate different preference lists for the same key.
 
 \begin{figure}
   \centering
     \includegraphics[scale=0.55]{images/hash.pdf}
-  \caption{Hash Ring}
+  \caption{Hash ring with example preference list for (a) Dynamo's algorithm (b) Our zone based routing algorithm}
   \label{hash}
 \end{figure}
 
-% ========================== SYSTEM ARCHITECTURE - SYSTEM COMPONENTS - CONFLICT RESOLUTION ==========================================
 
-\subsubsection {Conflict Resolution } 
-\label{sec:system_architecture:system_components:conflict_resolution}
+The last module i.e. the storage layer is pluggable with a simple interface which all storage engines must implement. Besides the basic $get$ and $put$ functions every storage engine must also implement the two functions shown in Figure \ref{storage_engines}. This allows us to provide streaming get API which can be helpful for debugging as well as rebalancing. The various storage engines that \projectname{} supports are Berkeley DB Java Edition, in-memory hash map, MySQL, Krati and our custom read-only storage engine.
 
-In distributed systems network partitions are possible. In such scenarios if you are updating various replicas of the same key it becomes very essential that we have some form of versioning in order to resolve future conflicts. In particular these versions should be able to differentiate between overwrites and conflicts. 
-
-For the same we use the concept of vector clocks \cite{lamport}. A vector clock keeps a counter for each writing server, and allows us to calculate when two versions are in conflict and when one version succeeds or precedes another. In practice this is a list of node id and counter pair. These counters are incremented depending on which node acts as the pseudo-master for a request. For example,  $[1:10,2:3]$ signifies that node id 1 was master for this replica 10 times while node id 2 was 3 times. 
-
-The use of vector clocks also allows us to support some form of optimistic locking on the client side. For example, if two clients both try to update the same key with the same vector clock only one of them will succeed while the other will be thrown a special error. This special error can then trigger the client to do the same $get$ and $put$ operation again some number of times, but now with the updated vector clock. We call this $applyUpdate$ and have seen its usage in various applications that require a `read, modify, write if no change' loop (Eg. counters)
-
-% ========================== SYSTEM ARCHITECTURE - SYSTEM COMPONENTS - CONSISTENCY MECHANISM  ==========================================
-
-\subsubsection {Consistency Mechanism }
-\label{sec:system_architecture:system_components:consistency_mechanism}
-
-When doing multiple simultaneous writes distributed across multiple servers consistency of data becomes a difficult problem. The traditional solution to this problem is distributed transactions, but these tend to have two problems. Firstly they are very slow due to the multiple round trips required for handshakes and acknowledgements. The other problem with them is that they tend to be very fragile and cannot work if some of the servers are down. One solution to this problem is to tolerate the possibility of inconsistency and provide mechanisms of eventually catching up on all the missed updates. 
-
-For the same we provide two consistency mechanisms in \projectname{} for read-write stores - read repair and hinted handoff. Read repair method detects these inconsistencies during read-time (using vector clocks) and resolves the problem by doing asynchronous writes. The other consistency mechanism, hinted handoff, is triggered during write time. If during a $put$ we find that some of the destination nodes are down (and we have satisfied our `required writes') the client triggers an asynchronous write to a special store called `slop store' on one of the live nodes. We write a `hint' to this store - where a hint contains the node id of the down node along with the updated value that it missed. We then have a periodic background job running on every node which tries to push these `hints' out to the down nodes.
-
-% ========================== SYSTEM ARCHITECTURE - SYSTEM COMPONENTS - STORAGE ENGINE  ==========================================
-
-\subsubsection {Storage engines}
-\label{sec:system_architecture:system_components:storage_engine}
-
-The storage layer is pluggable with a simple interface which all storage engines must implement. Besides the basic $get$ and $put$ functions every storage engine must also implement the following two functions 
-
+\begin{figure}
 \scriptsize
 \begin{verbatim}
 Iterator<K> keys() 
 Iterator<Pair<K, VectorClock<V>>> entries()
 \end{verbatim}  
 \normalsize
+\caption{Operations supported by all storage engines}
+\label{storage_engines}
+\end{figure}
 
-This allows us to provide streaming get API which can be helpful for debugging as well as rebalancing. The various storage engines that \projectname{} supports are Berkeley DB Java Edition, in-memory hash map, MySQL, Krati and our custom read-only storage engine. 
 
-% ========================== SYSTEM ARCHITECTURE - SYSTEM COMPONENTS - ADMIN SERVICE  ==========================================
-
-\subsubsection{Administrative service}
-\label{sec:system_architecture:system_components:admin_service}
-
-Besides running the above stack every node also runs a special service on every node which allow administrators to run special commands. Here we list some of the commands that we support.
+Besides running the above stack every node also runs a service which allow administrators to run restricted commands. Here we list some of the commands that we support.
 
 \begin{itemize}
-	
 	\item \emph{Add / delete / truncate store} - Ability to add or delete a store without down time. We can also truncate the complete data without deleting the store. 
 	\item \emph{Stream data} - We have the ability to stream data out of a store. If the store is read-write, we can stream data in as well. 
 	\item \emph{Read-only store operations} - Trigger the batch fetch from Hadoop as well as other related operations. We will discuss this further in Section \ref{sec:read_only}. 
 	\item \emph{Slop operations} - Ability to manually trigger the periodic pushing job for hinted handoff. 
-	
 \end{itemize}
 
 \begin{figure}
   \centering
     \includegraphics[scale=0.60]{images/fullstack.pdf}
-  \caption{\projectname{} in full stack}
+  \caption{\projectname{} cluster usage in \linkedin{}}
   \label{fullstack}
 \end{figure}
 
@@ -398,7 +357,7 @@ to the operating system eases garbage collection tuning.
 \begin{figure}
   \centering
     \includegraphics[scale=0.45]{images/storage_format.pdf}
-  \caption{Chunk file format}
+  \caption{Chunk data format generated by the offline job}
   \label{storage_format}
 \end{figure}
 
@@ -442,7 +401,7 @@ rebalancing~(\S~\ref{sec:read_only:data_cycle:rebalancing}).
 \hline
     \end{tabular}
 \end{center}
- 	\caption{Node to chunk mapping}
+ 	\caption{Mapping of node id to their corresponding chunk file buckets}
  	\label{tab:node_to_chunk}
 \end{table}
 
@@ -630,7 +589,7 @@ Figure \ref{cycle} shows the complete data cycle that eventually results in new 
 \begin{figure}
   \centering
     \includegraphics[scale=0.60]{images/cycle.pdf}
-  \caption{Read-only data cycle}
+  \caption{Steps involved for a complete data-cycle}
   \label{cycle}
 \end{figure}
 
@@ -685,7 +644,7 @@ The rebalancing tool has also been designed to handle failure scenarios elegantl
 \hline
     \end{tabular}
 \end{center}
- 	\caption{New node to chunk mapping}
+ 	\caption{Node id to chunk file buckets after addition of a new node}
  	\label{tab:new_node_to_chunk}
 \end{table}
 
@@ -698,7 +657,7 @@ The rebalancing tool has also been designed to handle failure scenarios elegantl
 \hline
     \end{tabular}
 \end{center}
-\caption{Rebalancing plan generated}
+\caption{Rebalancing plan generated for addition of a new node}
 \label{tab:rebalance_plan}
 \end{table}
 
