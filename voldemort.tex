@@ -128,12 +128,7 @@
 
 \maketitle
 % ========================== ABSTRACT ==========================================
-\begin{abstract}
-Many internet based companies have started building analytics products backed by computationally intensive data-mining algorithms. One of the important system requirements for these products is the ability to present these results to the end user under strict latency constraints. A good systems practice to achieve this is by decoupling the computation layer from the serving layer. MapReduce paradigm, through the open-source solution Hadoop, has seen a wide spread adoption as the perfect solution for the computation layer. But it is the current serving layers which haven't been able to keep up and deal with the consumption of these massive data-sets without affecting serving performance. 
-
-In this paper we present a fast serving and storage layer called Project \projectname{} which addresses this problem by offloading the index construction to the computation layer. We have built and open-sourced this distributed and fault-tolerant layer with the ability to serve both read-write and read-only batch computed data. In this paper we will focus primarily on the read-only data serving cycle and talk about how it has helps LinkedIn serve multiple TBs of data regularly. With its very simple key-value based interface \projectname{} today powers most of LinkedIn's social recommendation products. 
-\end{abstract}
-
+\input abstract.tex
 \input intro.tex
 
 % ========================== RELATED WORK ==========================================
