@@ -28,6 +28,7 @@
 \date{}
 
 \newcommand{\sql}[1]{\texttt{#1}}
+\newcommand{\term}[1]{\texttt{#1}}
 
 \hypersetup{
     pdftitle = {\doctitle},
@@ -378,11 +379,21 @@ how we dealt with it.
 \subsection{Storage format}
 \label{sec:read_only:storage_format}
 
-A quick study of previous literature showed that most storage formats try to build data structures that keep the data memory-resident in the process address space. Unfortunately most of them do not think too much about caching being done by the operating system's page cache. Classical example of this is InnoDB storage engine of MySQL which buffers both key and data pages resulting in double caching 
-% \cite{Page 203 - Understanding MySQL internals} 
-at both OS as well as MySQL level. Also the latency gap between access from page cache vs disk is so massive that the only real performance benefit by maintaining our own structure would be for elements already in the page cache. In fact now this custom structure may even start taking memory away from the page cache. This motivated us to build our storage engine to exploit the page cache instead of maintaining our own complex data structure. Since our data is immutable the simplest way to do so is by memory mapping the entire index into the address space. Since \projectname{} has been written in Java and runs on the JVM, delegating the memory management to the operating system is also a big plus point since we now don't need to worry about Java's garbage collection and its tuning.
-
-The following diagram is the structure of our storage engine's data and index files. 
+Many storage formats try to build data structures that keep the data
+memory-resident in the process address space, ignoring the effects of
+the operating system's page cache. A classical example is the InnoDB
+storage engine of MySQL, which buffers both key and data pages
+resulting in double caching at both OS as well as MySQL level. The
+several orders of magnitude latency gap between the page cache and
+disk means the only real performance benefit by maintaining our own
+structure is for elements already in the page cache. In fact, this
+custom structure may even start taking memory away from the page
+cache. Rather, this motivated the need of our storage engine to
+exploit the page cache instead of maintaining our own complex data
+structure. Since our data is immutable, \projectname{} memory maps the
+entire index into the address space. Since \projectname{} has been
+written in Java and runs on the JVM, delegating the memory management
+to the operating system eases garbage collection tuning.
 
 \begin{figure}
   \centering
@@ -391,10 +402,34 @@ The following diagram is the structure of our storage engine's data and index fi
   \label{storage_format}
 \end{figure}
 
+Figure~\ref{storage_format} shows the structure of the storage
+engine's data and index files. 
 
-We split our data into multiple chunks where every chunk is a pair of data and index file. There are two reasons to split the data into multiple chunks - (a) parallelism achieved on the Hadoop side (b) limitation of Java to memory map files up to a maximum of 2 GB. We build multiple chunks for every partition-replica bucket. We have set a standard naming convention for all our chunk files. It follows the pattern \verb=<partition id>_<replica id>_<chunk id>.= \verb=<data or index>=, where \verb=partition id= is the id of the primary partition and \verb=replica id= is a number between 0 to `replication factor'-1. Once a key hashes to a particular node, we classify it into the correct \verb=partition id= + \verb=replica id= bucket. For example the key in Figure \ref{hash}, present in a store using consistent hashing, would fall into the buckets 11\_0 (on node 2) and 11\_1 (on node 0). 
+The data is split into multiple chunks where every chunk is a pair of
+data and index files. This split is necessary to achieve parallelism
+for store building in Hadoop. The system builds multiple chunks for
+every partition-replica bucket. We have set a standard naming
+convention for all our chunk files. It follows the pattern
+\verb=<partition id>_<replica id>_<chunk id>.= \verb=<data or index>=,
+where \verb=partition id= is the id of the primary partition and
+\verb=replica id= is a number between 0 to `replication factor'-1.
+Once a key hashes to a particular node, we classify it into the
+correct \verb=partition id= + \verb=replica id= bucket. For example
+the key in Figure \ref{hash}, present in a store using consistent
+hashing, would fall into the buckets 11\_0 (on node 2) and 11\_1 (on
+node 0). 
 
-We then take all the tuples in this bucket and split it up into multiple smaller chunks. The table \ref{tab:node_to_chunk} below shows the various bucket names (where every bucket will contain multiple chunks and each chunk will in turn contain an index and data file) for a store with consistent hash routing and replication factor 2. This assumes that the cluster has the same partition ring topology as shown in Figure \ref{hash}. This bucket granularity was definitely not present in our first iteration since we had initially started by defining a bucket to be only on a per node basis (i.e. multiple chunks stored on a node with no knowledge about partitions). Over time we realized that breaking up the bucket into smaller granularity would help rebalancing. We will describe this in more details in Section \ref{sec:read_only:data_cycle:rebalancing}. 
+The system takes all the tuples in this bucket, splitting them further
+into multiple smaller chunks. The table \ref{tab:node_to_chunk} below
+shows the various bucket names (where every bucket will contain
+multiple chunks and each chunk will in turn contain an index and data
+file) for a store with consistent hash routing and replication factor
+2. This assumes that the cluster has the same partition ring topology
+as shown in Figure \ref{hash}. Our initial design started with the
+simpler scheme of one bucket per node (i.e. multiple chunks stored on
+a node with no knowledge about partitions), but this smaller
+granularity is necessary to aid in
+rebalancing~(\S~\ref{sec:read_only:data_cycle:rebalancing}).
 
 \begin{table}
 \begin{center}
@@ -411,58 +446,93 @@ We then take all the tuples in this bucket and split it up into multiple smaller
  	\label{tab:node_to_chunk}
 \end{table}
 
+The index file is a compact structure containing the sorted upper
+8~bytes of the MD5 of the key followed by the 4~byte offset of the
+corresponding value in the data file. This simple sorted structure
+allows us to easily leverage Hadoop, where mappers and reducers do not
+have much memory. Further, preliminary tests also showed that the
+index files were generally order of magnitude smaller than the data
+files and hence, could safely fit into the page cache.
 
-The index file is a compact structure containing sorted upper 8 bytes of the MD5 of the key followed by the 4 byte offset of the corresponding value in the data file. The primary reason to go for this simple sorted structure, in comparison to various previous complicated page aware structures described in literature, was to keep the build process simple. Since we wanted to leverage Hadoop for our index construction we had to face the inherent limitation that generally mapper and reducer tasks do not have much memory. Building complicated structures then would require us to explore various fancy external tree building functions thereby making the process very error prone. Preliminary tests also showed that the index files were generally order of magnitude smaller than the data files. Hence we could safely assume that they would fit into page cache easily. 
+An interesting optimization is that the full 16 bytes of the MD5 of
+the key is not necessary. We had initially started by using the full
+MD5 signature, but over time we noticed multi-tenant performance
+problems: stores were stamping on each others pages in the page cache.
+To alleviate this problem, we needed to cut down on the amount of data
+being memory mapped, which can be achieved by reducing the available
+key-space and accepting collisions in the data file. 
 
-We had initially started by using all 16 bytes of the MD5 of the key in the index file. But over time as we started on-boarding various new stores we started getting performance problem. This was happening because having lots of stores was resulting in stamping on each others pages in the page cache. To alleviate this problem we needed to cut down on the amount of data being memory mapped. This could be achieved by cutting down on the number of bytes of the MD5 of the key and accepting collisions in the data file. So we wanted to find the right number of bits which would result in minimum number of collisions. This problem could easily be mapped to the classic birthday paradox problem,  which says that if we want to retrieve \verb=n= random integers from a uniform distribution of range \verb=[1, x]=, the probability that at least 2 numbers are the same is  $(1 - e^{\frac{-n(n-1)}{2x}})$. Mapping this to our read-only stores scenario, our \verb=n= is generally our 120 million member user base, while the initial value of \verb=x= was equal to $2^{128} - 1$ (16 bytes of MD5 = 128 bits). The probability of collision in this scenario was close to 0. Now if we try to decrease this to say 4 bytes (i.e. 32 bits), this gives a very high collision probability of $(1 - e^{\frac{(-120*10^{6} * (120*10^{6} - 1)}{2 * (2^{32} - 1)}}) \sim 1$. But if we instead cut it by half to 8 bytes (i.e. 64 bits) we get a very low probability of $(1 - e^{\frac{(-120*10^{6} * (120*10^{6} - 1)} { 2 * (2^{64} - 1 )}}) \sim 3.9024e^{-04}$. The probability of more than one collision is even smaller. In conclusion, by decreasing the number of bytes of the MD5 of the key we were able to cut down the index size by 40\%, thereby making our clusters more multi-tenant. Unfortunately this came at the expense of us having to (a) save the keys in the data file to use for lookups (b) take care of rare collisions in the data files.
+Our optimization proceeded as follows and can be mapped to the classic
+birthday paradox: if we want to retrieve $n$ random integers from a
+uniform distribution of range $[1, x]$, the probability that at least
+2 numbers are the same is:
+\begin{equation}
+1 - e^{\frac{-n(n-1)}{2x}}
+\end{equation}
+Mapping this to our scenario, $n$ is generally our 120 million member
+user base, while the initial value of $x$ is $2^{128} - 1$ (16 bytes
+of MD5). The probability of collision in this scenario was close to 0.
+A key-space of 4 bytes (i.e. 32 bits) yields an extremely high
+collision probability of:
+\begin{equation}
+1 - e^{\frac{(-120*10^{6} * (120*10^{6} - 1)}{2 * (2^{32} - 1)}} \sim 1
+\end{equation}
+Instead, a compromise of 8 bytes (i.e. 64 bits) produces:
+\begin{equation} 
+1 - e^{\frac{(-120*10^{6} * (120*10^{6} - 1)} { 2 * (2^{64} - 1 )}} < 0.0004
+\end{equation}
+The probability of more than one collision is even smaller. Thus, by
+decreasing the number of bytes of the MD5 of the key we were able to
+cut down the index size by 40\%, thereby making our clusters more
+multi-tenant. The size of the keys-space is an optional parameter the
+admin may set depending on the semantics of the data. Unfortunately,
+this came at the expense of us having to save the keys in the data
+file to use for lookups and handle the rare collisions in the data
+files.
 
-The data file is similarly a very highly packed structure where we store the number of collided tuples followed by a set of collided \verb=[key size, value size, key, value]= list. The important thing to remember here is that we store the raw key bytes instead of the MD5-ed key bytes in order to do a comparison during reads. 
-
+The data file is similarly a very highly packed structure where we
+store the number of collided tuples followed by a set of collided
+\verb=[key size, value size, key, value]= list. The important thing to
+remember here is that we store the raw key bytes instead of the MD5-ed
+key bytes in order to do a comparison during reads. 
 
 % ========================== READ-ONLY-STORAGE ENGINE  - VERSIONING ==========================================
 
 \subsection{Versioning of data}
 \label{sec:read_only:versioning}
 
-One of our requirements was the ability to rollback the data. The above chunk files need to be stored in a layered format so as to allow us to do rollback. Every time the user creates a new copy of the complete data-set we need to demote the previous copy to an older state but still keep it around in case of a scenario of rollback. Following is how the data is structured for the read-only stores on a \projectname{} node. 
+One of our requirements was the ability to rollback the data. The
+above chunk files need to be stored in a layered format so as to allow
+rollback. Every time a new copy of the complete data-set is created,
+the system needs to demote the previous copy to an older state.
+Following is how the data is structured for the read-only stores on a
+\projectname{} node. 
 
-\scriptsize
-\begin{verbatimtab}
-store_name/
-  version-2/
-    .metadata
-    0_0_0.data
-    0_0_0.index
-    ...
-    100_0_0.data
-    100_0_0.index
-  version-3/
-    .metadata
-    0_0_0.data
-    0_0_0.index
-    ...
-    100_0_0.data
-    100_0_0.index
-  latest -> version-3
-\end{verbatimtab}
-\normalsize
+Every store is represented by a directory which then contains various
+``versions'' of the data. Since the data in all the version
+directories, except the serving one, are inactive we are not affecting
+the page cache usage and hence the latency. Since disk is cheap and
+rollbacks are important, keeping some previous copies of the data
+(configurable by the user or admin) is beneficial.
 
-Every store is represented by a directory which then contains various `versions' of the data. Since the data in all the version directories, except the serving one, are inactive we are not affecting the page cache usage and hence the latency. Since disk is cheap and rollbacks are important to us, keeping some previous copies of the data is beneficial. Also the number of backups we keep is configurable and generally depends on the cluster usage. So for example a cluster in a developer environment need not keep any backup at all while that in production should keep a reasonable number.
-
-Every version directory follows the naming convention of \verb=version-<no>=, where every new load of data should have a number greater than the previous ones. Other than the restriction that the numbers should be increasing, we do not put any other special requirements. Hence the developer can override the default, which is previous max version + 1, and instead opt for time-stamp since epoch. This allows them to track information about exactly when the data was loaded. Along with the version directories we also store a symbolic link `latest' which points to the directory from which we are serving data. For example, in the directory layout shown above the live version is 3, while 2 is the only rollback backup version. 
-
-Now deploying a new data version is as simple as starting a new version folder with a number greater than the previous ones and then changing the symbolic link. Every new load of data also makes sure to maintain the correct number of backups and in an attempt to decrease I/O does the delete of previous versions asynchronously. Finally rollback of data is again as simple as changing the symbolic link to a previous version folder and swapping the data in. 
+Deploying a new data version is as simple as starting a new version
+folder and changing the symbolic link to the latest data. A rollback
+is as simple as changing the symbolic link to a previous version
+folder and swapping the data in. 
 
 % ========================== READ-ONLY-STORAGE ENGINE  - CHUNK GENERATION ==========================================
 
 \subsubsection{Chunk generation}
 \label{sec:read_only:chunk_generation}
 
-Construction of the chunk files for all \projectname{} nodes is a single MapReduce job. The following is the pseudo-code representation of the complete job. 
+Construction of the chunk files for all \projectname{} nodes is a
+single MapReduce job; the pseudo-code representation is shown in
+Figure~\ref{fig:mapreduce-chunk-generation}.
+
+\begin{figure}
+\centering
 
 \scriptsize
-
-\label{MapReduce for Chunk generation}
 \begin{verbatimtab}
 # numChunks - Number of chunks per bucket
 # repFactor - Replication factor of store
@@ -502,26 +572,30 @@ reduce (K, Iterator<V> iter)
     writeDataFile(V.V')
     position += (2 * size(int) + V.K'.size + V.V'.size)
 \end{verbatimtab}
-\normalsize
+\caption{MapReduce for Chunk generation}
+\label{fig:mapreduce-chunk-generation}
+\end{figure}
 
-
-The Hadoop based job consists on a simple map phase which partitions the data depending on the routing strategy, a partitioner which redirects the keys to the correct reducer and finally the reduce phase where a reducer writes the data to a single chunk (i.e. a data and index file). We have an extensible mapper which takes the source data in any format, using Hadoop's InputFormat, and then has a custom hook to convert it into the format \projectname{} will be serializing to. This phase then emits out the upper 8 bytes of MD5 of the \projectname{} key $N$ times as the map phase key with the map phase value equal to a grouped tuple of node id, partition id, replica id and the raw \projectname{} key and value. We then have a custom partitioner which generates the chunk id from this key. Since we have a fixed number of chunks on a per partition-replica basis we generate the chunk id by doing a simple mod of number of chunks. The partitioner then uses the partition id, replication factor of the store and the chunk id to route the key to the correct reducer. Finally every reducer picks up responsibility for a single chunk. This mapping means that now by having more chunks we can increase the parallelism during the build phase. Since Hadoop automatically sorts the data based on the key to one reducer we get the data in the order in which we want to output it to the data files. Hence the reducer phase is a simple append to index and data file on HDFS with no extra processing required.  
-
-The figure below shows how we layout the chunk files on HDFS. We separate the data on a per node basis so as to have a one folder to one node mapping. This makes the data fetching process easy since now every node needs to just pick up one folder on HDFS and not worry about the others.
-
-\scriptsize
-\begin{verbatimtab}
-store_name/
-  node-0/
-    .metadata
-    0_0_0.data
-    0_0_0.index
-    ...
-  node-1/
-  ...
-  node-n/
-\end{verbatimtab}
-\normalsize
+The Hadoop job consists on a simple map phase which partitions the
+data depending on the routing strategy where the partitioner redirects
+keys to the correct reducer; the reduce phase writes the data to a
+single chunk (i.e. a data and index file). Due to Hadoop's generic
+\term{InputFormat} mechanics, any source data can be converted to
+\projectname{}. This phase then emits the upper 8~bytes of MD5 of the
+\projectname{} key $N$~times as the map phase key with the map phase
+value equal to a grouped tuple of node id, partition id, replica id
+and the raw \projectname{} key and value. The custom partitioner then
+generates the chunk id from this key. Since there is a fixed number of
+chunks on a per partition-replica basis, the chunk id is generated
+with a simple mod of the number of chunks. The partitioner uses the
+partition id, replication factor of the store and the chunk id to
+route the key to the correct reducer. Finally, every reducer is
+responsible for a single chunk, meaning that by having more chunks,
+once can increase the parallelism during the build phase. Since Hadoop
+automatically sorts the data based on the key, the process receives
+data in the order necessary for the output data files and can simply
+append to index and data file on HDFS with no extra processing
+required.  
 
 % ========================== READ-ONLY-STORAGE ENGINE  - SEARCH ==========================================
 
