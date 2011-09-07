@@ -1,42 +1,39 @@
-% ========================== INTRODUCTION ==========================================
 \section{Introduction}
 \label{sec:introduction}
 
-Many social networking, e-commerce, and web properties are showcasing
+Many social networking, e-commerce, and web properties contain
 data-derived products, which usually consist of some data mining
-application to expose insights to the user. Typical products include:
+application exposing insights to the user. Typical products include:
 ``People You May Know,'' a link prediction system attempting to find
 others one might know on the social
 network~(c.f.~Figure~\ref{fig:pymk}); collaborative filtering, which
 showcases relationships between pairs of items based on the wisdom of
-the crowd~(c.f.~Figure~\ref{fig:browsemaps}); job recommendations; and
-more. \linkedin\footnote{Anonymized name} is a top-5 social network
-with more than 100 million members consisting of these and thirty more
-data-derived products. 
+the crowd~(c.f.~Figure~\ref{fig:browsemaps}); job and other entity
+recommendations; and more. \linkedin\footnote{Anonymized name} is a
+top-5 social network with more than 120 million members consisting of
+these and twenty other data-derived products. 
 
-The challenge with these data-derived products is that they operate on
-a large scale, as they must surface hundreds of results for over 100
-million members. More importantly, due to the dynamic nature of the
-social graph, this derived data changes extremely
-frequently---requiring almost a complete refresh of the data, while
-still simultaneously serving existing traffic with minimal additional
-latency.
+The challenge with these data-derived products is that they operate at
+a large scale: they must surface hundreds of results for each of our
+120 million members. More importantly, due to the dynamic nature of
+the social graph, this derived data changes extremely
+frequently---requiring an almost complete refresh of the data, all the
+while still serving existing traffic with minimal additional latency.
 
 The product data cycle in this context consists of a continuous cycle
 of three phases: data collection, processing and finally serving. The
 data collection phase usually involves log ingestion, while the
 processing phase is a distributed parallel computing infrastructure,
-like Hadoop. The end goal of this processing is to surface insights
-that can then be provided back to the user. 
+like Hadoop. The end goal of this batch processing is to surface
+insights that can then be provided back to the user. 
 
 This paper presents Project \projectname{}, our key-value solution for
-the final serving phase of this cycle, and how it fits into our
-product ecosystem. The challenge of this system is the efficient bulk
-loading of large amounts of the data, especially since data refreshes
-happen several times a day, all the while handling failures and still
-serving live traffic. At \linkedin, this system has been running for
-over 2 years with our largest cluster loading around 3~TB of new data
-to the site every day and serving $x$~TB to end users. 
+the final serving phase of this cycle, and discusses how it fits into
+our product ecosystem. The challenge of this system is the frequent
+background bulk loading of full data sets, with data refreshes
+happening several times a day. At \linkedin, this system has been
+running for over 2 years with our largest cluster loading around 3~TB
+of new data to the site every day and serving $x$~TB to end users. 
 
 \projectname{} is inspired by Amazon's Dynamo~\cite{dynamo} and was
 initially designed to only support the fast online read/write load.
@@ -49,7 +46,8 @@ restored to a clean copy minimizing the time in error, which helps
 support fast, iterative development, especially necessary on new
 feature improvements. The system is horizontally scalable, and to
 enable easy addition of new nodes, the system also supports
-rebalancing of existing data.
+rebalancing of existing data. Node failures are handled via
+replication.
 
 Our evaluation, and the results we see in production, indicate that
 the system supports bulk loads during reads, is horizontally scalable,
