@@ -12,11 +12,11 @@ In this section we will present some experiment numbers on a simulated data-set 
 \begin{figure}
   \centering
     \includegraphics[scale=0.55]{images/data_distribution.pdf}
-  \caption{Value size distributions}
+  \caption{Value size distributions for PYMK and Browsemaps. The abrupt stop is because we put a cap on the number of recommendations}
   \label{distribution}
 \end{figure}
 
-The first metric that we look into is the build times. To do a fair comparison we build all our stores for a single node. The build time in case of our Hadoop job includes the time it takes to generate the chunk mapping (map phase), shuffle the data and finally emit it to the store files (reduce phase). The number of mappers and reducer were kept fixed so as to have same amount of parallelism. This also resulted in fixed number of chunks being generated.
+The first metric that we look into is the build times. To do a fair comparison we built all our stores for a single node. The build time in case of our Hadoop job includes the time it takes to generate the chunk mapping (map phase), shuffle the data and finally emit it to the store files (reduce phase). The number of mappers and reducer were kept fixed so as to have same amount of parallelism. This also resulted in fixed number of chunks being generated.
 
 In case of MySQL - MyISAM test the total time only includes the completion of the `LOAD DATA INFILE' command. This does not include the time it took us to extract this data, convert it into TSV format and finally copy it over to the node running MySQL single instance. Some other optimizations we did to make MySQL faster include - (a) Increasing the MySQL bulk insert buffer size and MyISAM specific sort buffer size to 256 MB each (b) Delaying the re-creation of the index to a latter time by running `ALTER TABLE...DISABLE KEYS' statement before the load. 
 
