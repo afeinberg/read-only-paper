@@ -4,9 +4,9 @@
 In this section we will present some experiment numbers on a simulated data-set as well as production numbers on two user facing features viz. `People You May Know' (also called PYMK) and `Viewers of this profile also viewed' (also called Browsemaps). We use two metrics to evaluate our system - faster build time and good serving latency. All tests were run on boxes running Linux 2.6.18 with Dual CPU (each having 8 cores running at 2.67 GHz), 24 GB RAM and 6 RAID 10 drives. For the MyISAM tests we ran MySQL Community Edition version 5.0.27. We start by describing the data-sets we used for our benchmarking. 
 
 \begin{itemize}
-	\item Random data-set : The key is a long between 0 and a varying number. The value is a fixed 1024 bytes size random string. 
-	\item PYMK data-set : On logging into our site, our users are presented with recommendations of other users whom they might know and would connect with. This is presented as a store where they key is the logged in user's member id while the value is a list of integer recommended member ids. Figure \ref{distribution} shows the value size distribution for this store. 
-	\item Browsemaps data-set : Browsemaps runs collaborative filtering algorithm on members and shows you similar members when you visit a member's profile. The value is a list of 2 integers, a string and a flot. Similar to PYMK, Figure \ref{distribution} shows the value size distribution for Browsemaps. 
+	\item \emph{Fixed value size data-set} : The key is a long between 0 and a varying number. The value is a fixed 1024 bytes size random string. 
+	\item \emph{PYMK data-set} : On logging into our site, our users are presented with recommendations of other users whom they might know and would connect with. This is presented as a store where they key is the logged in user's member id while the value is a list of integer recommended member ids. Figure \ref{distribution} shows the value size distribution for this store. 
+	\item \emph{Browsemaps data-set} : Browsemaps runs collaborative filtering algorithm on members and shows you similar members when you visit a member's profile. The value is a list of 2 integers, a string and a flot. Similar to PYMK, Figure \ref{distribution} shows the value size distribution for Browsemaps. 
 \end{itemize}
 
 \begin{figure}
@@ -18,7 +18,7 @@ In this section we will present some experiment numbers on a simulated data-set 
 
 The first metric that we look into is the build times. To do a fair comparison we built all our stores for a single node. The build time in case of our Hadoop job includes the time it takes to generate the chunk mapping (map phase), shuffle the data and finally emit it to the store files (reduce phase). The number of mappers and reducer were kept fixed so as to have same amount of parallelism. This also resulted in fixed number of chunks being generated.
 
-In case of MySQL - MyISAM test the total time only includes the completion of the `LOAD DATA INFILE' command. This does not include the time it took us to extract this data, convert it into TSV format and finally copy it over to the node running MySQL single instance. Some other optimizations we did to make MySQL faster include - (a) Increasing the MySQL bulk insert buffer size and MyISAM specific sort buffer size to 256 MB each (b) Delaying the re-creation of the index to a latter time by running `ALTER TABLE...DISABLE KEYS' statement before the load. 
+In case of MySQL - MyISAM test the total time only includes the completion of the \sql{LOAD DATA INFILE} command. This does not include the time it took us to extract this data, convert it into TSV format and finally copy it over to the node running MySQL single instance. Some other optimizations we did to make MySQL faster include - (a) Increasing the MySQL bulk insert buffer size and MyISAM specific sort buffer size to 256 MB each (b) Delaying the re-creation of the index to a latter time by running \sql{ALTER TABLE...DISABLE KEYS} statement before the load. 
 
 Besides the B$^{+}$ tree structure built inside MySQL, we wanted to try to build our own B$^{+}$ tree structure tailored to Hadoop. Instead of generating chunk files in every reducer step, we generate a B$^{+}$ tree. This tree contains of a single data file (similar to the chunk data file) and a set of index files corresponding to every level of the tree. The bulk loading of the tree is done in blocks (of size $b$) i.e. we first finish the lower level's block and only then initialize a block at the next level. We then apply this rule recursively for every level as the sorted elements stream through. This bulk loading approach is efficient in that it does not require us to buffer any values in memory and can directly write to the level based index files. 
 
@@ -27,7 +27,7 @@ The graph in Figure \ref{build} is the build time in seconds for the above three
 \begin{figure}
   \centering
     \includegraphics[scale=0.55]{images/build.pdf}
-  \caption{Build time vs size of data}
+  \caption{Build time vs varying data size}
   \label{build}
 \end{figure}
 
@@ -38,7 +38,7 @@ We first try to understand the performance implications of binary search vs inte
 \begin{figure}
   \centering
     \includegraphics[scale=0.55]{images/search_1node.pdf}
-  \caption{Search Latency vs Time}
+  \caption{Search Latency vs Time since swap}
   \label{search}
 \end{figure}
 
@@ -59,7 +59,7 @@ To test whether the system scales well with the number of boxes, we present the 
 \begin{figure}
   \centering
     \includegraphics[scale=0.55]{images/search_16node.pdf}
-  \caption{Search Latency vs Data size for 16 nodes}
+  \caption{Median search latency vs varying data size for 16 node cluster}
   \label{16search}
 \end{figure}
 
@@ -73,6 +73,4 @@ We finally present the latency numbers for PYMK and Browsemaps on our production
   \caption{Latency vs Time for PYMK and Browsemaps}
   \label{production}
 \end{figure*}
-
-
 
