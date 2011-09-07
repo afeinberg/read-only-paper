@@ -4,5 +4,5 @@
 *.blg
 *latexmk*
 *.aux
-*.RData
+.RData
 *.pdf

@@ -1,0 +1,5 @@
+library(ggplot2)
+r <- read.csv("data/browsemap_raw", sep=" ")
+s <- qplot(Time, ms, data = r, fontsize=14, theme_blank, xlab ="Time in minutes", ylab ="Browesmaps latency in ms") + opts(legend.position="top", legend.direction="horizontal") + scale_shape(name="")
+pdf("images/browsemap_search.pdf", width=5, height=4)
+print(s, newpage=F)
