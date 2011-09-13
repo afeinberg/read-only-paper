@@ -21,7 +21,7 @@ A \projectname{} \emph{cluster} can contain multiple \emph{nodes}, each with a u
 
 \projectname{} has a pluggable architecture, as shown in Figure \ref{arch}. Each box represents a module, all of which share the same code interface. Every module has exactly one functionality, making it easy to interchange modules and place them in any order. For example, we can have the routing module on either the client side or the server side. Functional separation at the module level also allows us to easily mock these modules for testing purposes. One of the most common use of this can be found in our unit tests where we mock the storage layer to use an in-memory hash map based engine for quick results.  
 
-Most of our modules have been motivated from the original Dynamo paper. Starting from the top our client has a simple $get$ and $put$ API. We do not support complex operations like joins, foreign key constraints, etc. We store multiple replicas for a key and version every one of them with a vector clock~\cite{lamport}. The next module in the architecture deals with conflict resolution for read-write stores. This module deals with the various conflicting versions of a tuple and finally returns one version. This resolution problem does not apply for read-only stores since the replicas of a key in these stores are always in sync. Similarly the `repair mechanism' layer consists of hinted handoff and read repair, both mechanisms used by read-write stores to bring the data back to a consistent state. 
+Most of our modules have been motivated from the original Dynamo paper. Starting from the top our client has a simple $get$ and $put$ API. We do not support complex operations like joins, foreign key constraints, etc. We store multiple replicas for a key, and version every one of them with a vector clock~\cite{lamport}. The next module deals with conflict resolution for read-write stores. This module deals with the various conflicting versions of a tuple and finally returns one version. This resolution problem does not apply for read-only stores since we update all the replicas of a key in a store at once, keeping them in sync. Similarly the `repair mechanism' layer consists of hinted handoff and read repair, both mechanisms used by read-write stores to bring the data back to a consistent state. 
 
 The `routing' module deals with partitioning as well as replication. Our partitioning scheme is similar to Dynamo's `virtual nodes' along with consistent hashing approach. We split our hash ring into equal size `partitions' and then assign these partitions to nodes. We share this ring with all the stores, which means changes in the ring require us to change all the stores. Now to generate the `preference list' (list of node ids where the replicas will be stored), we first hash the key to a range belonging to a partition and then continue jumping the ring clockwise till we find $N$-1 other partitions belonging to different nodes. 
 
@@ -401,7 +401,7 @@ files is interpolation search~\cite{manolopoulos}. This search
 strategy uses the key distribution to predict the approximate location
 of the key, rather than halving the search space on every iteration.
 Interpolation search works well for uniformly distributed keys,
-dropping the search complexity from $O(log N)$ to $O(log log N)$. This
+dropping the search complexity from $O(log~N)$ to $O(log~log~N)$. This
 helps in the un-cached scenario by reducing the number of disk seeks.
 
 We have also looked into other strategies like Fast and Pegasus. As
