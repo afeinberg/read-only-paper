@@ -1,4 +1,4 @@
-Size	Size_in_mb	Our_impl	BTree	MySQL
+Size	Size_in_mb	Spock	BTree	MySQL
 0.8	826379459	165	212	93
 1.6	1652554951	127 	185	216
 3.2	3304763921	218	245	412
