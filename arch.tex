@@ -478,13 +478,20 @@ the data with no downtime.
 
 Over time as new stores get added to the cluster, the disk to memory
 ratio increases beyond the initial capacity planning. This can result
-in degrading the serving latency. This motivates the rebalanacing 
-feature which allows us to add new nodes to a live cluster without 
-downtime. This feature was initially written for the read-write stores but easily
-fits into the read-only cycle due to the static nature of the data.
-Our smallest unit of rebalancing is a partition. In other words,
-addition of a new node translates to giving the ownership of some
-partitions to it. The rebalancing process is run by a tool that 
+in degrading the serving latency. Since our data is static the 
+na\"{i}ve way to solve this problem is to start a new larger cluster,
+re-push the data and switch the clients over. Unfortunately this
+requires massive co-ordination when dealing with 100+ clients talking
+to 100+ stores.
+
+This motivates the need to have a feature to transparently and 
+incrementally add capacity to the cluster indepedent of the data pushes. 
+The rebalancing feature allows us to add new nodes to a live cluster without 
+downtime. This feature was initially written for the read-write stores 
+but easily fits into the read-only cycle due to the static nature 
+of the data. Our smallest unit of rebalancing is a partition. In 
+other words, addition of a new node translates to giving the ownership 
+of some partitions to it. The rebalancing process is run by a tool that 
 co-ordinates the full process. The following are the steps that
 are followed during the addition of a new node. 
 
@@ -523,7 +530,7 @@ the intermediate cluster topology on all the nodes while also doing an
 atomic swap of data on the stealer and donor nodes. 
 			
 This topology change information also needs to be propagated to all
-the upper services using client side routing. \projectname propagates
+the upper services using client side routing. \projectname{} propagates
 this information as a lazy process where-in the clients still use the
 old metadata. If they contact a node with a request for a key in a
 partition which the node is no more responsible the node sends a
@@ -538,14 +545,12 @@ new data has been swapped. However, failure during the swap requires a
 rollback of the cluster topology to the last good cluster topology
 while also rolling back the data on the successful nodes. 
 
-A simple example showing the plan generation is as follows for the
-same hash ring shown in Figure~\ref{hash} with a store using
-consistent hashing. We introduce a new node (Node~3) to whom we will
-initially pass the responsibility of partitions~3.
-Table~\ref{tab:new_node_to_chunk} shows the new chunk mapping, while
-Table~\ref{tab:rebalance_plan} shows the simple plan that would be
-generated as a part of rebalancing. 
-
+Table~\ref{tab:new_node_to_chunk} shows the new chunk mapping when a
+new node is introduced to cluster with the same hash ring as Figure
+\ref{hash}. This node is now responsible for partition 3. Table 
+\ref{tab:rebalance_plan} shows the simple plan that would be generated
+during rebalancing.
+ 
 \begin{table}
 \begin{center}
     \begin{tabular}{ | c | c | }
