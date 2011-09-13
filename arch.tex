@@ -409,41 +409,56 @@ required.
 \label{sec:read_only:search}
 
 To find a key, the system needs to run the current routing strategy to
-determine which partitions (and so nodes) will need to query for the
-key. The following is a sketch of the algorithm to find the data. 
+determine which partitions (and so nodes) that need to be queried for
+the key. The following is a sketch of the algorithm to find the data. 
 
 \begin{enumerate}
   \item Calculate the MD5 of the key
-  \item Generate partition id, replica id (which replica were we
-searching for when we came to this node?) and chunk id (By taking the
-first 4 bytes of the MD5-ed key, modulo the number of chunks)
-  \item Go to the store's folder and find the chunk files having the
-above chunk id in the bucket (partition id and replica id). 
-  \item Do a binary search using the top 8~bytes of
-the MD5-ed key as the search key in the index file. This is easy to do
-since we have fixed space requirements for every key (12 bytes - 8
-bytes for key and 4 bytes for offset) thereby not requiring any
-internal pointers within the index file. For example to find the data
-location of the $i$th element in the sorted index is a simple jump to
-the offset 12 * $i$ + 8 from where we can read the offset to the data
-file.  
-  \item Once we have the offset in the data file we iterate over all
-the collided tuples in the data file, comparing the keys. If we find
-the key we are looking for, we return the corresponding value.
+  \item Generate the partition id, replica id (the replica being
+searched when querying this node) and chunk id (the first 4 bytes of
+the MD5-ed key modulo the number of chunks)
+  \item From the store's folder, find the chunk files having the above
+chunk id in the bucket (partition id and replica id). 
+  \item Perform a binary search using the top 8~bytes of the MD5-ed
+key as the search key in the index file. This is easy, as there are
+fixed space requirements for every key (12 bytes: 8 bytes for key and
+4 bytes for offset), thereby not requiring any internal pointers
+within the index file. For example, the data location of the $i$-th
+element in the sorted index is simply a jump to
+the offset $12 \cdot i + 8$.  
+  \item Iterate through any potential collided tuples in the data
+file, comparing keys, and returning the corresponding value on key
+match. 
 \end{enumerate}
 
-The most time consuming step above is the search in the index file. A simple binary search in an index of size 1 million keys can result in around 20 key comparisons. This means if the cache is completely not cached we will be doing 20 expensive disk seeks just to read one value. To partially solve this problem while fetching the files from HDFS we transfer the index files after all data files. This helps a little since now the index files might still be in the operating system's page cache thereby helping decreasing the number of times we hit the disk. Unfortunately this small optimization still doesn't help in the scenario when we do a rollback of data to a previous version folder. 
+The most time consuming step is the search in the index file. A binary
+search in an index of 1~million keys can result in around 20~key
+comparisons, which means if the cache is not in core, there will be
+20~disk seeks to read one value. As a small optimization, while
+fetching the files from HDFS, Spock transfers the index files after
+all data files to aid in keeping the index files in the OS page cache.
 
-A lot of previous work has been done in the area of search algorithms for disk files which are sorted. One of these algorithms includes Interpolation search\cite{manolopoulos}. This search strategy is a little smarter than binary search, in that instead of always looking into the middle of the search range in the array, it uses the key distribution to predict the approximate location of the key. This works very well for uniformly distributed keys and drops the search complexity from O(log N) to O (log log N). This definitely helps in the completely un-cached scenario since we are dropping the number of key lookups. Saving every key comparison in the un-cached scenario is beneficial since every lookup costs a couple of milliseconds. The one disadvantage of interpolation search is that the rate of data now becoming cached decreases due to less areas of the index that we are accessing. 
+Rather than binary search, another search strategy for sorted disk
+files is interpolation search~\cite{manolopoulos}. This search
+strategy uses the key distribution to predict the approximate location
+of the key, rather than halving the search space on every iteration.
+Interpolation search works well for uniformly distributed keys,
+dropping the search complexity from $O(log N)$ to $O(log log N)$. This
+helps in the un-cached scenario by reducing the number of disk seeks.
 
-Other than the above algorithms, we also looked into other strategies like Fast and Pegasus. As proved in \cite{manolopoulos}, most of these are better suited for non-uniform distributions. Since we can assume that MD5 provides a good uniform distribution the speed-up involved in using these other algorithms is very small. 
+We have also looked into other strategies like Fast and Pegasus. As
+proved in \citet{manolopoulos}, most of these are better suited for
+non-uniform distributions. As MD5 provides a fairly representative
+uniform distribution, there will be minimal speedup from these
+techniques.
 
 % ========================== READ-ONLY-STORAGE ENGINE  - COMPLETE DATA CYCLE ==========================================
 
 \subsection{Complete data cycle}
 \label{sec:read_only:data_cycle}
 
-Figure \ref{cycle} shows the complete data cycle that eventually results in new data being swapped into a \projectname{} store. 
+Figure \ref{cycle} shows the complete data cycle that eventually
+results in new data being swapped into a \projectname{} store. 
 
 \begin{figure}
   \centering
@@ -452,44 +467,124 @@ Figure \ref{cycle} shows the complete data cycle that eventually results in new 
   \label{cycle}
 \end{figure}
 
-The initiator of this complete fetching and swapping of new data process can be either Azkaban or a standalone driver program. Azkaban\cite{azkaban} is a simple batch scheduler built at \linkedin{} which allows you to schedule Hadoop as well other offline batch jobs. Individual end products schedule batch Hadoop and Pig jobs to run algorithms on the raw data which finally loads the data to \projectname{} as the last step. The last step starts by Azkaban triggering our Hadoop job described in Section~\S\ref{sec:read_only:chunk_generation}. This job generates the data on a per node basis and stores it into HDFS. While streaming the data out onto HDFS we also calculate the checksum on a per node basis. This checksum is calculated by running an MD5 on the individual MD5s of all the chunk files in a node directory. This checksum value is then stored in a special file $.metadata$ in every node folder. 
+The initiator of this complete fetching and swapping of new data is a
+standalone driver program, which starts by triggering the Hadoop job
+described in Section~\S\ref{sec:read_only:chunk_generation}. This job
+generates the data on a per node basis and stores it into HDFS. While
+streaming the data out onto HDFS, the system also calculates a
+checksum on a per node basis by storing a running MD5 on the
+individual MD5s of all the chunk files. 
 
-Once the Hadoop job is complete Azkaban triggers a fetch request on all \projectname{} nodes along with information about the root directory path on HDFS. This request is received by our `administrative service' on every node which then initiates an HDFS client and starts a parallel fetch for the node folder it is responsible for. This data is stored into a new version directory whose version number could either be specified as a parameter by Azkaban or defaulted to (previous version number + 1). While the data is being fetched from HDFS we also calculate the same checksum so as to cross-check it with the stored checksum in the $.metadata$ file. While building this fetch layer we made sure to keep the interface generic so as to support fetching data from non-HDFS locations as well. The other important decision we made here was to adopt the pull model instead of the push model. This allows the \projectname{} node to now throttle the fetches in case of any latency problems. 
+Once the Hadoop job is complete, the driver triggers a fetch request
+on all \projectname{} nodes. This request is received by each node's
+``administrative service,'' which then initiates a parallel fetch for
+its respective node folder. While the data is being streamed from
+HDFS, the checksum is validated with the checksum from the build step.
+Spock uses a pull model, rathern than a push model, as it allows
+throttling of the fetches in case of latency.
 
-The next step after the fetch is complete is to swap the new data-set in and swap the older version out. For Azkaban to know when to initiate a swap it needs to know when the fetch has successfully completed. Since the fetch process can take a long time we provide a hook in the administrative service for Azkaban / standalone program to keep checking so as to get a progress report of how much we have finished fetching. Finally after the fetch is complete Azkaban triggers a swap operation on all nodes. This operation is co-ordinated using a read-write lock in our storage engine. We obtain a write lock when the swap starts during which we do the following - close all open file in the current version directory, change the symbolic link to the new version directory and finally open all chunk files and memory map the indexes. This complete operation doesn't take more than a few milliseconds since it is not dependent on the file size information. To provide global atomic semantics we make sure that all the nodes have successfully swapped their data. If any of the swaps have failed, we run an extra step to rollback the data on the successful nodes.
-
+After the data is available on each respective node, Spock must swap
+the new data-set with the older version. Finally after the fetch is
+complete, the driver triggers a swap operation on all nodes, which is
+co-ordinated via a read-write lock in the storage engine. Each node
+closes its current set of chunks, open its new set of chunks, and
+memory maps the new index. This operation takes a few milliseconds at
+most as no data reads are required. To provide global atomic
+semantics, the driver ensures that all the nodes have successfully
+swapped their data; rolling back if any swaps have failed.
 
 % ========================== READ-ONLY-STORAGE ENGINE  - COMPLETE DATA CYCLE - SCHEMA CHANGE ==========================================
 
 \subsubsection{Schema upgrades}
 \label{sec:read_only:data_cycle:schema_upgrades}
 
-As engineers iterate on their products there are bound to be changes in the underlying data format of the values that they want to expose to the user. Common example of this is if a product wants to add a new dimension to their value. For the same \projectname{} supports the ability to change the schema of the key and value without any downtime. Since read-only data is static and we can do a complete load of the full data-set every time we can easily change the schema during one of our loads. But for the client to transparently handle this change we need to added a special byte in our most used serialization format, Binary JSON, to encode the version of the schema. This same version information is saved in the stores metadata which the clients pick up during bootstrapping. The clients then maintain a mapping from version id to corresponding schema. So if a data fetch takes place with the new schema, during the read we toggle to the right version id and pick up the corresponding schema. Similarly if a rollback of data takes place the client will toggle back to an older version of schema and be able to parse the data with no downtime. 
+There are bound to be changes to the underlying data model; a common
+example of this is if a product wants to add a new dimension to their
+value. \projectname{} supports the ability to change the schema of the
+key and value without downtime: since the data is static and the
+system does a full refresh, the schema can easily be changed. For the
+client to transparently handle this change, the system encodes a
+special version byte in the binary JSON serialization format. This
+same version information is saved in the stores' metadata, which
+clients pick up during bootstrapping. The clients maintain a mapping
+from version-id to corresponding schema, so if a data fetch introduces
+a new schema, during the read the client will toggle the right version
+id and pick up the corresponding schema. Similarly, during rollback,
+the client toggles to an older version of schema and is able to read
+the data with no downtime. 
 
 % ========================== READ-ONLY-STORAGE ENGINE  - COMPLETE DATA CYCLE - REBALANCING ==========================================
 
 \subsubsection{Rebalancing}
 \label{sec:read_only:data_cycle:rebalancing}
 
-Rebalancing is a major feature which allows \projectname{} to easily add or rebalance data around on a live cluster without down time. This feature was initially written for the read-write stores but easily fits into the read-only cycle due to the static nature of the data. Our smallest unit of rebalancing is a partition. In other words addition of a new node translates to giving the ownership of some partitions to it. The rebalancing process is run by a rebalancing tool which co-ordinates the full process. The following are the steps that are followed during the addition of a new node. 
+Rebalancing is a major feature which allows \projectname{} to easily
+add or rebalance data around on a live cluster without downtime. This
+feature was initially written for the read-write stores but easily
+fits into the read-only cycle due to the static nature of the data.
+Our smallest unit of rebalancing is a partition. In other words,
+addition of a new node translates to giving the ownership of some
+partitions to it. The rebalancing process is run by a rebalancing tool
+that co-ordinates the full process. The following are the steps that
+are followed during the addition of a new node. 
 
 \begin{itemize}
-	\item Provide the rebalancing tool with the future cluster topology metadata.
-	\item Using the future cluster topology metadata, generate list of all primary partitions that need to be moved
-	\item Do the following steps for every `batch' of primary partitions. The reason behind moving the partition in small batches is that it makes the process checkpoint-able without having to re-fetch too much data. 
-		\begin{itemize}
-			\item Generate intermediate cluster topology metadata which is current cluster topology with changes in ownership of `batch' of partitions moved
-			\item Use intermediate cluster topology metadata to generate a set of steps that need to be run to finish rebalancing. In this process we also need to take care of all the secondary replica movements that might be required due to the primary partition movement. This plan is a set of donating node id and stealing node id pairs along with the chunk files being moved. 
-			\item Initiate asynchronous processes (through the administrative service) on all the stealer nodes which then start stealing chunk files from their corresponding donor nodes. The data is copied into the same version directory which is currently serving live traffic. We also make these nodes to go into a `rebalancing state' thereby not allowing any new fetches and swaps from taking place. 
+\item Provide the rebalancing tool with the future cluster topology
+metadata.
+\item Using the future cluster topology metadata, generate list of all
+primary partitions that need to be moved
+\item Do the following steps for every batch of primary partitions,
+which allows moving the partition in small batches so as to make the
+process checkpoint-able without having to re-fetch too much data. 
+\begin{itemize}
+\item Generate intermediate cluster topology metadata which is current
+cluster topology with changes in ownership of batch of partitions
+moved
+\item Use intermediate cluster topology metadata to generate a set of
+steps that need to be run to finish rebalancing. In this process,
+Spock must take care of all the secondary replica movements that might
+be required due to the primary partition movement. This plan is a set
+of donating node id and stealing node id pairs along with the chunk
+files being moved. 
+\item Initiate asynchronous processes (through the administrative
+service) on all the stealer nodes which then start stealing chunk
+files from their corresponding donor nodes. These nodes to go into a
+``rebalancing state'' and are thereby do not take any new data.
 			
-			Here it is important to note that the granularity of the bucket we selected made this process as simple as just a copy of files. If we had defined a bucket to be on a per node basis i.e. have multiple chunks on a per node basis, we would have had to iterate over all the keys on the node and find the correct key set belonging to the moving partition. Further we would then need to merge this key set with the live serving index on the stealer node's end. 
-			\item Once the fetches have completed the rebalancing tool updates the intermediate cluster topology on all the nodes while also doing an atomic swap of data on the stealer and donor nodes. 
+Here it is important to note that the granularity of the bucket
+selected makes this process as simple as copying files. If buckets
+were defined on a per node basis (i.e. have multiple chunks on a per
+node basis), the system would need to iterate over all the keys on the
+node and find the correct key set belonging to the moving partition,
+then merging this key set with the live serving index on the stealer
+node's end. 
+\item Once the fetches have completed, the rebalancing tool updates
+the intermediate cluster topology on all the nodes while also doing an
+atomic swap of data on the stealer and donor nodes. 
 			
-			This topology change information also needs to be propagated to all the upper services using client side routing. We propagate this information as a lazy process where-in the clients still use the old metadata. If they contact a node with a request for a key in a partition which the node is no more responsible the node sends a special exception. This special exception then results in a re-bootstrap step along with a retry of the previous request.
-		\end{itemize}
+This topology change information also needs to be propagated to all
+the upper services using client side routing. \projectname propagates
+this information as a lazy process where-in the clients still use the
+old metadata. If they contact a node with a request for a key in a
+partition which the node is no more responsible the node sends a
+special exception, which results in a re-bootstrap step along with a
+retry of the previous request.
+\end{itemize}
 \end{itemize}
 
-The rebalancing tool has also been designed to handle failure scenarios elegantly. Failure during a fetch is not a problem since we haven't swapped the data in. But failure during the swap requires us to rollback the cluster topology to the last good cluster topology while also rolling back the data on the successful nodes. Let us end this section by demonstrating a simple example showing the plan generation. We will run this for the same hash ring shown in Figure \ref{hash} with a store using consistent hashing. We introduce a new node (Node 3) to whom we will initially pass the responsibility of partitions 3. Table \ref{tab:new_node_to_chunk} shows the new chunk mapping, while Table \ref{tab:rebalance_plan} shows the simple plan that would be generated as a part of rebalancing. 
+The rebalancing tool has also been designed to handle failure
+scenarios elegantly. Failure during a fetch is not a problem since no
+new data has been swapped. However, failure during the swap requires a
+rollback of the cluster topology to the last good cluster topology
+while also rolling back the data on the successful nodes. 
+
+A simple example showing the plan generation is as follows for the
+same hash ring shown in Figure~\ref{hash} with a store using
+consistent hashing. We introduce a new node (Node~3) to whom we will
+initially pass the responsibility of partitions~3.
+Table~\ref{tab:new_node_to_chunk} shows the new chunk mapping, while
+Table~\ref{tab:rebalance_plan} shows the simple plan that would be
+generated as a part of rebalancing. 
 
 \begin{table}
 \begin{center}
@@ -519,7 +614,4 @@ The rebalancing tool has also been designed to handle failure scenarios elegantl
 \caption{Rebalancing plan generated}
 \label{tab:rebalance_plan}
 \end{table}
-
-
-
 
