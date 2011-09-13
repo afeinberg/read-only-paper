@@ -25,7 +25,11 @@ of three phases: data collection, processing and finally serving. The
 data collection phase usually involves log ingestion, while the
 processing phase is a distributed parallel computing infrastructure,
 like Hadoop. The end goal of this batch processing is to surface
-insights that can then be provided back to the user. 
+insights that can then be provided back to the user. Also with the 
+massive adoption of various batch computing infrastructures like 
+Dyrad\cite{dyrad} and MapReduce\cite{dean} the amount of data generated 
+is growing very fast, thereby requiring our serving layer to cater 
+to more data. 
 
 This paper presents Project \projectname{}, our key-value solution for
 the final serving phase of this cycle, and discusses how it fits into
@@ -33,7 +37,7 @@ our product ecosystem. The challenge of this system is the frequent
 background bulk loading of full data sets, with data refreshes
 happening several times a day. At \linkedin, this system has been
 running for over 2 years with our largest cluster loading around 3~TB
-of new data to the site every day and serving $x$~TB to end users. 
+of new data to the site every day. 
 
 \projectname{} is inspired by Amazon's Dynamo~\cite{dynamo} and was
 initially designed to only support the fast online read/write load.
@@ -43,19 +47,24 @@ cycle and support these batch-oriented use cases.
 
 \projectname{} supports instantaneous rollback, where data can be
 restored to a clean copy minimizing the time in error, which helps
-support fast, iterative development, especially necessary on new
-feature improvements. The system is horizontally scalable, and to
-enable easy addition of new nodes, the system also supports
-rebalancing of existing data. Node failures are handled via
-replication.
+support fast, iterative development, especially necessary for new
+feature improvements. The system also provides the ability to grow
+horizontally with its ability to rebalance existing data to new nodes
+without down-time. Our evaluation, and the results we see in production, 
+show that the system yields sub-20~ms average read times---even during data
+refreshes. 
 
-Our evaluation, and the results we see in production, indicate that
-the system supports bulk loads during reads, is horizontally scalable,
-and regularly yields sub-20~ms read times---even during data
-refreshes.
+This paper discusses the following contributions:
 
-\projectname{} is open source and readily available under the Apache
-license. 
+\begin{itemize}
+	\item A scalable offline index construction data pipeline in Hadoop
+        \item Custom storage engine which leverages the operating system's 
+caching for cache management
+\end{itemize}
+
+Aside from the above contributions, we discuss the related work in Section 
+\S\ref{sec:related_work}. We also provide some experimental evaluation and
+production numbers at \linkedin{} in Section \S\ref{sec:evaluation}.
 
 \begin{figure}
 \centering
