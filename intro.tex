@@ -31,6 +31,21 @@ Dyrad\cite{dyrad} and MapReduce\cite{dean} the amount of data generated
 is growing very fast, thereby requiring our serving layer to cater 
 to more data. 
 
+\begin{figure}
+\centering
+\subfloat[][]{\label{fig:pymk}
+\includegraphics[scale=0.5]{images/pymk}
+}
+
+\subfloat[][]{\label{fig:browsemaps}
+\includegraphics[width=0.9\columnwidth]{images/browsemaps}
+}
+
+\caption{\subref{fig:pymk}~The ``People You May Know'' module
+\subref{fig:browsemaps}~An example collaborative filtering
+application.}
+\end{figure}
+
 This paper presents Project \projectname{}, our key-value solution for
 the final serving phase of this cycle, and discusses how it fits into
 our product ecosystem. The challenge of this system is the frequent
@@ -65,16 +80,5 @@ caching for cache management
 Aside from the above contributions, we discuss the related work in Section 
 \S\ref{sec:related_work}. We also provide some experimental evaluation and
 production numbers at \linkedin{} in Section \S\ref{sec:evaluation}.
-
-\begin{figure}
-\centering
-\subfloat[][]{\label{fig:pymk}\dots figure removed for blind review\dots}
-
-\subfloat[][]{\label{fig:browsemaps}\dots figure removed for blind review\dots}
-
-\caption{\subref{fig:pymk}~The ``People You May Know'' module
-\subref{fig:browsemaps}~An example collaborative filtering
-application.}
-\end{figure}
 
 % vim: set ft=tex:
