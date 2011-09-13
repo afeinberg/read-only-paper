@@ -1,8 +1,8 @@
 library(ggplot2)
 r <-read.csv("data/pymk_data_distribution", sep="\t")
 t <-read.csv("data/browsemap_data_distribution", sep="\t")
-r$Name <- "Pymk"
-t$Name <- "Browsemaps"
+r$Name <- "PYMK"
+t$Name <- "CF"
 c <- rbind(r,t)
 xbreaks <- c(4,6,8,10,12,14,16)
 s <- qplot(Size, Values, data = c, shape = Name, fontsize=14, theme_blank) +

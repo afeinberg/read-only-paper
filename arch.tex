@@ -412,7 +412,7 @@ To find a key, the system needs to run the current routing strategy to
 determine which partitions (and so nodes) that need to be queried for
 the key. The following is a sketch of the algorithm to find the data. 
 
-\begin{enumerate}
+\begin{compactenum}
   \item Calculate the MD5 of the key
   \item Generate the partition id, replica id (the replica being
 searched when querying this node) and chunk id (the first 4 bytes of
@@ -429,7 +429,7 @@ the offset $12 \cdot i + 8$.
   \item Iterate through any potential collided tuples in the data
 file, comparing keys, and returning the corresponding value on key
 match. 
-\end{enumerate}
+\end{compactenum}
 
 The most time consuming step is the search in the index file. A binary
 search in an index of 1~million keys can result in around 20~key
@@ -528,7 +528,7 @@ partitions to it. The rebalancing process is run by a rebalancing tool
 that co-ordinates the full process. The following are the steps that
 are followed during the addition of a new node. 
 
-\begin{itemize}
+\begin{compactitem}
 \item Provide the rebalancing tool with the future cluster topology
 metadata.
 \item Using the future cluster topology metadata, generate list of all
@@ -536,7 +536,7 @@ primary partitions that need to be moved
 \item Do the following steps for every batch of primary partitions,
 which allows moving the partition in small batches so as to make the
 process checkpoint-able without having to re-fetch too much data. 
-\begin{itemize}
+\begin{compactitem}
 \item Generate intermediate cluster topology metadata which is current
 cluster topology with changes in ownership of batch of partitions
 moved
@@ -569,8 +569,8 @@ old metadata. If they contact a node with a request for a key in a
 partition which the node is no more responsible the node sends a
 special exception, which results in a re-bootstrap step along with a
 retry of the previous request.
-\end{itemize}
-\end{itemize}
+\end{compactitem}
+\end{compactitem}
 
 The rebalancing tool has also been designed to handle failure
 scenarios elegantly. Failure during a fetch is not a problem since no
