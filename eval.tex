@@ -5,6 +5,7 @@ Our evaluation answers the following questions:
 \begin{compactenum}
 \item Can the system rapidly deploy new data-sets?
 \item What is the read latency, and how does it scale?
+\item What is impact on live serving during the load?
 \end{compactenum}
 
 We use a simulated data-set as well as production data for two
@@ -57,12 +58,13 @@ mappers and reducer are kept fixed so as to have same amount of
 parallelism. This also resulted in fixed number of chunks being
 generated.
 
-In case of MySQL, the MyISAM test is the completion time of the
-\sql{LOAD DATA INFILE} command. Some optimizations to make MySQL
-faster include increasing the MySQL bulk insert buffer size and the
-MyISAM specific sort buffer size to 256 MB each and delaying the
-re-creation of the index to a latter time by running \sql{ALTER
-TABLE...DISABLE KEYS} statement before the load. 
+In case of MySQL, the build time is the completion time of the
+\sql{LOAD DATA INFILE} command. This ignores the time it took convert
+the data to TSV and copy it over to the MySQL node. Some optimizations 
+to make MySQL faster include increasing the MySQL bulk insert buffer 
+size and the MyISAM specific sort buffer size to 256 MB each and also 
+delaying the re-creation of the index to a latter time by running 
+\sql{ALTER TABLE...DISABLE KEYS} statement before the load. 
 
 Besides the B$^{+}$ tree structure built inside MySQL, we build our
 own B$^{+}$ tree structure tailored to Hadoop. Instead of generating
