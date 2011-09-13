@@ -6,10 +6,10 @@
 A \projectname{} \emph{cluster} can contain multiple \emph{nodes}, each with a unique id. All the nodes in the cluster store the same number of \emph{stores} - which correspond to database tables. General usage patterns have shown that a site-facing feature may map to either one store or multiple stores. For example, a feature dealing with group recommendation will map to two stores: one recording member id to recommended group ids and second recording a group id to their corresponding description. Every store has the following list of configurable parameters, which are identical to Dynamo's parameters. 
 \begin{compactitem}
 	\item \emph {Replication factor} ($N$) - Number of nodes onto which each key-value tuple is replicated
-	\item \emph {Required reads} ($R$) - Number of nodes which we read from in parallel during a $get$ before declaring a success
-	\item \emph {Required writes} ($W$) - Number of node responses we block for before declaring success during a $put$
-	\item \emph {Key/Value serializer and compression} - \projectname{} can have different serialization schema for key and value. For our custom batch data we use our own custom binary JSON format. \projectname{} also supports per-tuple based compression that can be applied to either key, or value, or both. The serialization / compression is completely dealt by a component which resides on the client side with the server only dealing with raw byte arrays. 
-	\item \emph {Storage type} - \projectname{} supports various read-write storage engine formats: Berkeley DB (BDB)~\cite{bdb} Java Edition, in-memory hash map and MySQL. We also support our own custom read-only storage engine, which is the focus of this paper.  
+	\item \emph {Required reads} ($R$) - Number of nodes \projectname{} reads from in parallel during a $get$ before declaring a success
+	\item \emph {Required writes} ($W$) - Number of node responses \projectname{} blocks for before declaring success during a $put$
+	\item \emph {Key/Value serializer and compression} - \projectname{} can have different serialization schema for key and value. For the custom batch data use-case, \projectname{} uses a custom binary JSON format. \projectname{} also supports per-tuple based compression that can be applied to either key, or value, or both. The serialization / compression is completely dealt by a component which resides on the client side with the server only dealing with raw byte arrays. 
+	\item \emph {Storage type} - \projectname{} supports various read-write storage engine formats: Berkeley DB (BDB)~\cite{bdb} Java Edition, in-memory hash map and MySQL. \projectname{} also supports a custom read-only storage engine, which is the focus of this paper.  
 \end{compactitem}
 
 \begin{figure}
@@ -19,11 +19,13 @@ A \projectname{} \emph{cluster} can contain multiple \emph{nodes}, each with a u
   \label{arch}
 \end{figure}
 
-\projectname{} has a pluggable architecture, as shown in Figure \ref{arch}. Each box represents a module, all of which share the same code interface. Every module has exactly one functionality, making it easy to interchange modules and place them in any order. For example, we can have the routing module on either the client side or the server side. Functional separation at the module level also allows us to easily mock these modules for testing purposes. One of the most common use of this can be found in our unit tests where we mock the storage layer to use an in-memory hash map based engine for quick results.  
+\projectname{} has a pluggable architecture, as shown in Figure \ref{arch}. Each box represents a module, all of which share the same code interface. Every module has exactly one functionality, making it easy to interchange modules and place them in any order. For example, we can have the routing module on either the client side or the server side. Functional separation at the module level also allows us to easily mock these modules for testing purposes. For example, mocked storage engine backed by hash map for unit tests. 
 
-Most of our modules have been motivated from the original Dynamo paper. Starting from the top our client has a simple $get$ and $put$ API. We do not support complex operations like joins, foreign key constraints, etc. We store multiple replicas for a key, and version every one of them with a vector clock~\cite{lamport}. The next module deals with conflict resolution for read-write stores. This module deals with the various conflicting versions of a tuple and finally returns one version. This resolution problem does not apply for read-only stores since we update all the replicas of a key in a store at once, keeping them in sync. Similarly the `repair mechanism' layer consists of hinted handoff and read repair, both mechanisms used by read-write stores to bring the data back to a consistent state. 
+Most of our modules have been motivated from the original Dynamo paper. Starting from the top our client has a simple $get$ and $put$ API. Every tuple is replicated for availability, with each value being versioned with a vector clock~\cite{lamport}. Conflicts during updates for read-write stores are resolved at the application level by the next module. This resolution problem does not apply for read-only stores since \projectname{} updates all the replicas of a key in a store at once, keeping them in sync. Similarly the `repair mechanism' layer, consisting of hinted handoff and read repair, is used only by read-write stores to bring the data back to a consistent state. 
 
-The `routing' module deals with partitioning as well as replication. Our partitioning scheme is similar to Dynamo's `virtual nodes' along with consistent hashing approach. We split our hash ring into equal size `partitions' and then assign these partitions to nodes. We share this ring with all the stores, which means changes in the ring require us to change all the stores. Now to generate the `preference list' (list of node ids where the replicas will be stored), we first hash the key to a range belonging to a partition and then continue jumping the ring clockwise till we find $N$-1 other partitions belonging to different nodes. 
+The `routing' module deals with partitioning as well as replication. Our partitioning scheme is similar to Dynamo's, where-in \projectname{} splits the hash ring into equal size `partitions' and then assigns them to nodes. This ring is then shared with all the stores, i.e. changes in the mapping require changes to all the stores. Now to generate the `preference list' (list of node ids where the replicas will be stored), we first hash the key to a range belonging to a partition and then continue jumping the ring clockwise to find $N$-1 other partitions belonging to different nodes. 
+
+The last module, i.e. the pluggable storage layer, has the same $get$ and $put$ functions, along with the ability to stream data out. Being able to iterate over all tuples in a store has proved to be very helpful during debugging of data. Besides running the above stack, every node also runs a service which allows the execution of following administrative commands - add / delete store, stream data out and trigger read-only store operations. 
 
 \begin{figure}
   \centering
@@ -31,8 +33,6 @@ The `routing' module deals with partitioning as well as replication. Our partiti
   \caption{Hash ring with example preference list for Dynamo's partitioning scheme }
   \label{hash}
 \end{figure}
-
-The last module i.e. the storage layer has the same $get$ and $put$ functions, along with the ability to stream data out. Being able to iterate over all tuples in a store has proved to be very helpful during debugging of data. Besides running the above stack, every node also runs a service which allows the following administrative commands - add / delete store, stream data out and trigger read-only store operations. 
 
 \begin{figure}
   \centering
@@ -43,7 +43,7 @@ The last module i.e. the storage layer has the same $get$ and $put$ functions, a
 
 
 \noindent 
-Now that we know the individual components, let us look at how \projectname{} is being used inside the complete \linkedin{} stack. As shown in Figure \ref{fullstack} we support both server side as well as client side routing. Client side routing requires an initial `bootstrap' step where-in it needs to retrieve two pieces of metadata - the cluster topology metadata and the store definitions. Since both of these are persisted on each and every \projectname{} node, the client initially hits a load balancer which in turn picks up a random live node to bootstrap from. Once the metadata has been retrieved the client gets the benefit of doing one less hop compared to server side routing since it knows exactly where the replicas for a key are. This is beneficial from a latency as well as throughput perspective since we have less number of services acting as bottlenecks. The disadvantage of the client side routing is that it makes the client side code-base large because of the extra routing and replication logic. Also, as we'll further explain in Section~\S\ref{sec:read_only:data_cycle:rebalancing}, it also makes rebalancing of data complicated since we now need a mechanism to change the cluster topology metadata on these live clients. 
+Now that we know the individual components, let us look at how \projectname{} is being used inside the complete \linkedin{} stack. As shown in Figure \ref{fullstack} \projectname{} supports two routing modes --- server side and client side routing. Client side routing requires an initial `bootstrap' step where-in it retrieves the metadata required for routing (cluster topology and store definitions) by load balancing to a random node. Once the metadata has been retrieved the client gets the benefit of doing one less hop compared to server side routing since it knows exactly where the replicas for a key are. This is beneficial from a latency as well as throughput perspective since there are less number of services acting as bottlenecks. The disadvantage of client side routing is that it makes the client side code-base large because of the extra routing and replication logic. Also, as we'll further explain in Section~\S\ref{sec:read_only:data_cycle:rebalancing}, it also makes rebalancing of data complicated since the \projectname{} nodes now need a mechanism to update the cluster topology metadata on the live clients. 
 
 
 % ========================== READ-ONLY-STORAGE ENGINE  ==========================================
@@ -63,7 +63,7 @@ problematic as every statement results in an incremental change to the
 underlying index structure---in this case, a B$^{+}$ tree---which in
 turn results in many disk seeks. To solve this problem, MySQL provides
 a \sql{LOAD DATA} statement that tries to bulk update the underlying
-index, but this requires a lock of the entire table if we the MyISAM
+index, but this requires a lock of the entire table if the MyISAM
 storage engine is used. InnoDB supports row-level locking, but comes
 at the expense of substantial disk space overhead for every tuple.
 Further, to achieve MyISAM-like performance with InnoDB, data must be
@@ -476,14 +476,16 @@ the data with no downtime.
 \subsubsection{Rebalancing}
 \label{sec:read_only:data_cycle:rebalancing}
 
-Rebalancing is a major feature which allows \projectname{} to easily
-rebalance data around on a live cluster without downtime. This
-feature was initially written for the read-write stores but easily
+Over time as new stores get added to the cluster, the disk to memory
+ratio increases beyond the initial capacity planning. This can result
+in degrading the serving latency. This motivates the rebalanacing 
+feature which allows us to add new nodes to a live cluster without 
+downtime. This feature was initially written for the read-write stores but easily
 fits into the read-only cycle due to the static nature of the data.
 Our smallest unit of rebalancing is a partition. In other words,
 addition of a new node translates to giving the ownership of some
-partitions to it. The rebalancing process is run by a rebalancing tool
-that co-ordinates the full process. The following are the steps that
+partitions to it. The rebalancing process is run by a tool that 
+co-ordinates the full process. The following are the steps that
 are followed during the addition of a new node. 
 
 \begin{compactitem}
