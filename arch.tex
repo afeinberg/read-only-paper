@@ -1,82 +1,42 @@
-\section{System Architecture}
+\section{Project \projectname{}}
+
+\subsection{System Architecture}
 \label{sec:system_architecture}
 
 A \projectname{} \emph{cluster} can contain multiple \emph{nodes}, each with a unique id. All the nodes in the cluster store the same number of \emph{stores} - which correspond to database tables. General usage patterns have shown that a site-facing feature may map to either one store or multiple stores. For example, a feature dealing with group recommendation will map to two stores: one recording member id to recommended group ids and second recording a group id to their corresponding description. Every store has the following list of configurable parameters, which are identical to Dynamo's parameters. 
 \begin{itemize}
-	\item \emph {Replication factor} ($N$) - Number of nodes onto which each key-value tuple is replicated
-	\item \emph {Required reads} ($R$) - Number of nodes which we read from in parallel during a $get$ before declaring a success
-	\item \emph {Required writes} ($W$) - Number of node responses we block for before declaring success during a $put$
-	\item \emph {Key/Value serializer and compression} - \projectname{} can have different serialization schema for key and value. For our custom batch data we use our own custom binary JSON format. \projectname{} also supports per-tuple based compression that can be applied to either key, or value, or both. The serialization / compression is completely dealt by a component which resides on the client side with the server only dealing with raw byte arrays. The only exception to this is a relatively new feature called `server side transforms', which will be further discussed later. 
+	\item \emph {Replication factor} ($N$)
+	\item \emph {Required reads} ($R$)
+	\item \emph {Required writes} ($W$)
+	\item \emph {Key/Value serializer and compression} - \projectname{} can have different serialization schema for key and value. For our custom batch data we use our own custom binary JSON format. \projectname{} also supports per-tuple based compression that can be applied to either key, or value, or both. The serialization / compression is completely dealt by a component which resides on the client side with the server only dealing with raw byte arrays. 
 	\item \emph {Storage type} - \projectname{} supports various read-write storage engine formats: Berkeley DB Java Edition, in-memory hash map and MySQL. We also support our own custom read-only storage engine, which is the focus of this paper.  
 \end{itemize}
 
 \begin{figure}
   \centering
-    \includegraphics[scale=0.45]{images/arch.pdf}
-  \caption{\projectname{} architecture stack}
+    \includegraphics[scale=0.55]{images/arch.pdf}
+  \caption{\projectname{} architecture containing pluggable modules}
   \label{arch}
 \end{figure}
 
-\projectname{} has a pluggable architecture as shown in Figure \ref{arch}. Each box represents a module, all of which share the same code interface. Every module has exactly one functionality, which we'll explain in the following sub-sections, making it easy to interchange modules and place them in any order. For example, we can have the routing module on either the client side or the server side. Functional separation at the module level also allows us to easily mock these modules for testing purposes. One of the most common use of this can be found in our unit tests where we mock the storage layer to use an in-memory hash map based engine for quick results.  
+\projectname{} has a pluggable architecture, as shown in Figure \ref{arch}. Each box represents a module, all of which share the same code interface. Every module has exactly one functionality, making it easy to interchange modules and place them in any order. For example, we can have the routing module on either the client side or the server side. Functional separation at the module level also allows us to easily mock these modules for testing purposes. One of the most common use of this can be found in our unit tests where we mock the storage layer to use an in-memory hash map based engine for quick results.  
 
-Most of our modules have been motivated from the original Dynamo paper. But since \projectname{}, like Dynamo, was initially built only for read-write operations we also explain how we had to modify these modules for the batch scenario. Starting from the top our client has a simple $get$ and $put$ API as shown in Figure \ref{clients}. We do not support complex operations like joins, foreign key constraints, etc. The $put$ operations throw an error for the read-only storage engine since we only support bulk loads into them. 
+Most of our modules have been motivated from the original Dynamo paper. Starting from the top our client has a simple $get$ and $put$ API as shown in Figure \ref{clients}. We do not support complex operations like joins, foreign key constraints, etc. We store multiple replicas for a key and version every one of them with a vector clock~\cite{lamport}. The next module in the architecture deals with conflict resolution for read-write stores. This module deals with the various conflicting versions of a tuple and finally returns one version. This resolution problem does not apply for read-only stores since the replicas of a key in these stores are always in sync. Similarly the `repair mechanism' layer consists of hinted handoff and read repair, both mechanisms used by read-write stores to bring the data back to a consistent state. 
 
-\begin{figure}
-\scriptsize
-\begin{verbatim}
-VectorClock<V> get (K key)
-put (K key, VectorClock<V> value)
-VectorClock<V> get (K key, T transform)
-put (K key, VectorClock<V> value, T transform)
-\end{verbatim}
-\normalsize
-
-\caption{Operations supported by clients}
-  \label{clients}
-\end{figure}
-
-During a $put$ to one of the read-write storage engines, we update some replicas of a key asynchronously and allow some failures. Due to common network partitions, we need the ability to version every tuple so as to resolve any conflicts later during $get$s. For the same we use the concept of vector clocks \cite{lamport} as described in the Dynamo paper. In the read-only scenario we do not need the vector clocks since the only way to update data is by bulk loading. Further since our bulk loading operation is atomic we thereby update all the replicas of a key at once. The next two functions show a very powerful feature in \projectname{} which allows you to run a transform / function on your data when it is on the server side. This can help us in saving some network bandwidth by transferring only the required parts of a large value. A common example of this is when we have a list of entities as the value. We can then run a transformed $get$ to retrieve a sub-list or a transformed $put$ to append an entity to your list. 
-
-The next module in the architecture deals with conflict resolution for read-write stores. This module deals with the various conflicting versions of a tuple and finally returns one version. This module can easily be extended by the user to write custom application specific resolution logic. This resolution problem does not apply for read-only stores since the replicas of a key in these stores are always in sync. Similarly the `repair mechanism' layer is used only by the read-write stores to bring the data back to a consistent state. \projectname{} provides two consistency mechanisms: read repair and hinted handoff. Read repair picks the versioned tuple from the conflict resolution module during read-time and updates the inconsistent replicas asynchronously. The other consistency mechanism, hinted handoff, is triggered during write time. If during a $put$ we find that some of the destination nodes are down (and we have satisfied $W$ replicas) the client triggers an asynchronous write to a special store called `slop store' on one of the live nodes. We write a `hint' to this store - where a hint contains the node id of the down node along with the updated value that it missed. We then have a periodic background job running on every node which tries to push these `hints' out to the down nodes.
-
-Since \projectname{} can be thought of as a massive hash table we need a way to partition the data across the multiple servers. The `routing' module deals with partitioning as well as replication. Our partitioning scheme is similar to Dynamo's `virtual nodes' along with consistent hashing approach. We split our hash ring into equal size `partitions' and then assign these partitions to nodes. We share this ring with all the stores, which means changes in the ring require us to change all the stores. Now to generate the `preference list' (list of node ids where the replicas will be stored), we first hash the key to a range belonging to a partition and then continue jumping the ring clockwise till we find $N$-1 other partitions belonging to different nodes. 
-
-Since our replication strategy is customizable it was easy to plug in another variant of the above algorithm to support routing in multiple data-center environment. We start by grouping nodes into logical clusters that we call `zones'. A zone can map to a data-center, a rack or just a group of nodes close together. Besides this we have a `zone proximity list' which contains information regarding zone distances (For example, Zone A is closer to Zone B than Zone C). Besides mentioning $N$, $R$ and $W$, every store also has the parameter to mention number of replicas per zone. Now by generating the preference list we need to jump the ring with an extra constraint of finding partitions belonging to different nodes and satisfying the zone replication requirements. Once the routing module generates the preference list it reorders it depending on the proximity list of the zone it is present in. This enables us to make sure requests first go to local zones instead of remote zones. Figure \ref{hash} is an example of how the two replication strategies would generate different preference lists for the same key.
+The `routing' module deals with partitioning as well as replication. Our partitioning scheme is similar to Dynamo's `virtual nodes' along with consistent hashing approach. We split our hash ring into equal size `partitions' and then assign these partitions to nodes. We share this ring with all the stores, which means changes in the ring require us to change all the stores. Now to generate the `preference list' (list of node ids where the replicas will be stored), we first hash the key to a range belonging to a partition and then continue jumping the ring clockwise till we find $N$-1 other partitions belonging to different nodes. 
 
 \begin{figure}
   \centering
-    \includegraphics[scale=0.55]{images/hash.pdf}
-  \caption{Hash ring with example preference list for (a) Dynamo's algorithm (b) Our zone based routing algorithm}
+    \includegraphics[scale=0.40]{images/hash.pdf}
+  \caption{Hash ring with example preference list for Dynamo's partitioning scheme }
   \label{hash}
 \end{figure}
 
-
-The last module i.e. the storage layer implements the same $get$ and $put$ functions along with 2 other functions to support streaming operations (as shown in Figure \ref{storage_engines}). The ability to iterate over all tuples in a store is treated as a privileged command and has proved to be very helpful during debugging of data. 
-
-\begin{figure}
-\scriptsize
-\begin{verbatim}
-Iterator<K> keys() 
-Iterator<Pair<K, VectorClock<V>>> entries()
-\end{verbatim}  
-\normalsize
-\caption{Operations supported by all storage engines}
-\label{storage_engines}
-\end{figure}
-
-
-Besides running the above stack, every node also runs a service which allow administrators to run restricted commands. Here we list some of the commands that we support.
-
-\begin{itemize}
-	\item \emph{Add / delete / truncate store} - Ability to add or delete a store without down time. We can also truncate the complete data without deleting the store. 
-	\item \emph{Stream data} - We have the ability to stream data out of a store. If the store is read-write, we can stream data in as well. 
-	\item \emph{Read-only store operations} - Trigger the batch fetch from Hadoop as well as other related operations. We will discuss this further in Section~\S\ref{sec:read_only}. 
-	\item \emph{Slop operations} - Ability to manually trigger the periodic pushing job for hinted handoff. 
-\end{itemize}
+The last module i.e. the storage layer has the  same $get$ and $put$ functions, along with abilities to stream data out. The ability to iterate over all tuples in a store has proved to be very helpful during debugging of data. Besides running the above stack, every node also runs a service which allow administrative commands - add / delete store, stream data out and trigger read-only store operations. 
 
 \begin{figure}
   \centering
-    \includegraphics[scale=0.60]{images/fullstack.pdf}
+    \includegraphics[scale=0.45]{images/fullstack.pdf}
   \caption{\projectname{} cluster usage in \linkedin{}}
   \label{fullstack}
 \end{figure}
@@ -88,7 +48,7 @@ Now that we know the individual components, let us look at how \projectname{} is
 
 % ========================== READ-ONLY-STORAGE ENGINE  ==========================================
 
-\section{Read-only storage engine}
+\subsection{Read-only storage engine}
 \label{sec:read_only}
 
 Before we started writing our own custom storage engine we decided to
@@ -182,7 +142,7 @@ how we dealt with it.
 
 % ========================== READ-ONLY-STORAGE ENGINE  - STORAGE FORMAT ==========================================
 
-\subsection{Storage format}
+\subsubsection{Storage format}
 \label{sec:read_only:storage_format}
 
 Many storage formats try to build data structures that keep the data
@@ -304,7 +264,7 @@ key bytes in order to do a comparison during reads.
 
 % ========================== READ-ONLY-STORAGE ENGINE  - VERSIONING ==========================================
 
-\subsection{Versioning of data}
+\subsubsection{Versioning of data}
 \label{sec:read_only:versioning}
 
 One of our requirements was the ability to rollback the data. The
@@ -447,14 +407,14 @@ dropping the search complexity from $O(log N)$ to $O(log log N)$. This
 helps in the un-cached scenario by reducing the number of disk seeks.
 
 We have also looked into other strategies like Fast and Pegasus. As
-proved in \citet{manolopoulos}, most of these are better suited for
+proved in \cite{manolopoulos}, most of these are better suited for
 non-uniform distributions. As MD5 provides a fairly representative
 uniform distribution, there will be minimal speedup from these
 techniques.
 
 % ========================== READ-ONLY-STORAGE ENGINE  - COMPLETE DATA CYCLE ==========================================
 
-\subsection{Complete data cycle}
+\subsubsection{Complete data cycle}
 \label{sec:read_only:data_cycle}
 
 Figure \ref{cycle} shows the complete data cycle that eventually
