@@ -5,9 +5,9 @@
 
 A \projectname{} \emph{cluster} can contain multiple \emph{nodes}, each with a unique id. All the nodes in the cluster store the same number of \emph{stores} - which correspond to database tables. General usage patterns have shown that a site-facing feature may map to either one store or multiple stores. For example, a feature dealing with group recommendation will map to two stores: one recording member id to recommended group ids and second recording a group id to their corresponding description. Every store has the following list of configurable parameters, which are identical to Dynamo's parameters. 
 \begin{itemize}
-	\item \emph {Replication factor} ($N$)
-	\item \emph {Required reads} ($R$)
-	\item \emph {Required writes} ($W$)
+	\item \emph {Replication factor} ($N$) - Number of nodes onto which each key-value tuple is replicated
+	\item \emph {Required reads} ($R$) - Number of nodes which we read from in parallel during a $get$ before declaring a success
+	\item \emph {Required writes} ($W$) - Number of node responses we block for before declaring success during a $put$
 	\item \emph {Key/Value serializer and compression} - \projectname{} can have different serialization schema for key and value. For our custom batch data we use our own custom binary JSON format. \projectname{} also supports per-tuple based compression that can be applied to either key, or value, or both. The serialization / compression is completely dealt by a component which resides on the client side with the server only dealing with raw byte arrays. 
 	\item \emph {Storage type} - \projectname{} supports various read-write storage engine formats: Berkeley DB Java Edition, in-memory hash map and MySQL. We also support our own custom read-only storage engine, which is the focus of this paper.  
 \end{itemize}
