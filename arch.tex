@@ -4,13 +4,13 @@
 \label{sec:system_architecture}
 
 A \projectname{} \emph{cluster} can contain multiple \emph{nodes}, each with a unique id. All the nodes in the cluster store the same number of \emph{stores} - which correspond to database tables. General usage patterns have shown that a site-facing feature may map to either one store or multiple stores. For example, a feature dealing with group recommendation will map to two stores: one recording member id to recommended group ids and second recording a group id to their corresponding description. Every store has the following list of configurable parameters, which are identical to Dynamo's parameters. 
-\begin{itemize}
+\begin{compactitem}
 	\item \emph {Replication factor} ($N$) - Number of nodes onto which each key-value tuple is replicated
 	\item \emph {Required reads} ($R$) - Number of nodes which we read from in parallel during a $get$ before declaring a success
 	\item \emph {Required writes} ($W$) - Number of node responses we block for before declaring success during a $put$
 	\item \emph {Key/Value serializer and compression} - \projectname{} can have different serialization schema for key and value. For our custom batch data we use our own custom binary JSON format. \projectname{} also supports per-tuple based compression that can be applied to either key, or value, or both. The serialization / compression is completely dealt by a component which resides on the client side with the server only dealing with raw byte arrays. 
-	\item \emph {Storage type} - \projectname{} supports various read-write storage engine formats: Berkeley DB Java Edition, in-memory hash map and MySQL. We also support our own custom read-only storage engine, which is the focus of this paper.  
-\end{itemize}
+	\item \emph {Storage type} - \projectname{} supports various read-write storage engine formats: Berkeley DB (BDB)~\cite{bdb} Java Edition, in-memory hash map and MySQL. We also support our own custom read-only storage engine, which is the focus of this paper.  
+\end{compactitem}
 
 \begin{figure}
   \centering
@@ -21,7 +21,7 @@ A \projectname{} \emph{cluster} can contain multiple \emph{nodes}, each with a u
 
 \projectname{} has a pluggable architecture, as shown in Figure \ref{arch}. Each box represents a module, all of which share the same code interface. Every module has exactly one functionality, making it easy to interchange modules and place them in any order. For example, we can have the routing module on either the client side or the server side. Functional separation at the module level also allows us to easily mock these modules for testing purposes. One of the most common use of this can be found in our unit tests where we mock the storage layer to use an in-memory hash map based engine for quick results.  
 
-Most of our modules have been motivated from the original Dynamo paper. Starting from the top our client has a simple $get$ and $put$ API as shown in Figure \ref{clients}. We do not support complex operations like joins, foreign key constraints, etc. We store multiple replicas for a key and version every one of them with a vector clock~\cite{lamport}. The next module in the architecture deals with conflict resolution for read-write stores. This module deals with the various conflicting versions of a tuple and finally returns one version. This resolution problem does not apply for read-only stores since the replicas of a key in these stores are always in sync. Similarly the `repair mechanism' layer consists of hinted handoff and read repair, both mechanisms used by read-write stores to bring the data back to a consistent state. 
+Most of our modules have been motivated from the original Dynamo paper. Starting from the top our client has a simple $get$ and $put$ API. We do not support complex operations like joins, foreign key constraints, etc. We store multiple replicas for a key and version every one of them with a vector clock~\cite{lamport}. The next module in the architecture deals with conflict resolution for read-write stores. This module deals with the various conflicting versions of a tuple and finally returns one version. This resolution problem does not apply for read-only stores since the replicas of a key in these stores are always in sync. Similarly the `repair mechanism' layer consists of hinted handoff and read repair, both mechanisms used by read-write stores to bring the data back to a consistent state. 
 
 The `routing' module deals with partitioning as well as replication. Our partitioning scheme is similar to Dynamo's `virtual nodes' along with consistent hashing approach. We split our hash ring into equal size `partitions' and then assign these partitions to nodes. We share this ring with all the stores, which means changes in the ring require us to change all the stores. Now to generate the `preference list' (list of node ids where the replicas will be stored), we first hash the key to a range belonging to a partition and then continue jumping the ring clockwise till we find $N$-1 other partitions belonging to different nodes. 
 
@@ -32,7 +32,7 @@ The `routing' module deals with partitioning as well as replication. Our partiti
   \label{hash}
 \end{figure}
 
-The last module i.e. the storage layer has the  same $get$ and $put$ functions, along with abilities to stream data out. The ability to iterate over all tuples in a store has proved to be very helpful during debugging of data. Besides running the above stack, every node also runs a service which allow administrative commands - add / delete store, stream data out and trigger read-only store operations. 
+The last module i.e. the storage layer has the same $get$ and $put$ functions, along with the ability to stream data out. Being able to iterate over all tuples in a store has proved to be very helpful during debugging of data. Besides running the above stack, every node also runs a service which allows the following administrative commands - add / delete store, stream data out and trigger read-only store operations. 
 
 \begin{figure}
   \centering
@@ -52,11 +52,10 @@ Now that we know the individual components, let us look at how \projectname{} is
 \label{sec:read_only}
 
 Before we started writing our own custom storage engine we decided to
-evaluate currently available storage engines, MySQL and Berkeley BD
-(BDB), to see if they could fit our bulk loading use-case. Our
-criteria for success was the ability to bulk load data as fast as
-possible with minimum disk space overhead while still serving live
-traffic.
+evaluate currently available storage engines, MySQL and BDB, to see 
+if they could fit our bulk loading use-case. Our criteria for success 
+was the ability to bulk load data as fast as possible with minimum 
+disk space overhead while still serving live traffic.
  
 We started by evaluating the various storage engines provided by
 MySQL. The na\"ive approach of multiple insert statements is
@@ -76,14 +75,14 @@ problems, particularly with CPU and I/O. We attempted to build MyISAM
 stores offline, opting to skip InnoDB due to the huge space
 requirements. To do so, we leveraged the fact that MySQL allows
 copying of database files from another node into a live database
-directory; thereby automatically making it available for serving. We a
+directory; thereby automatically making it available for serving. We built a
 separate cluster where-in we would bulk load and then eventually copy
 the data over to the live cluster, but this requires an extra
 maintenance cost of a separate MySQL cluster with exactly the same
 number of nodes as the live one. Further, the lack of ability to load
 compressed data directly makes this process more time consuming, as
 the data is copied multiple times between nodes: once as a flat file
-to the bulk load cluster, then the internal copy during the LOAD
+to the bulk load cluster, then the internal copy during the \sql{LOAD}
 statement, and finally the raw data copy to the actual live database. 
 
 The previous solution is not ideal due to its dependency on the
@@ -92,10 +91,9 @@ failure downtimes. Instead, what if we could use the inherent fault
 tolerance and parallelism of Hadoop and build individual node /
 partition level data stores which could be pulled over by
 \projectname{} for serving? The large-scale adoption of HDFS as the
-data sink makes it an ideal location to act as our source of data:
-most data is ETL'd into HDFS for storage and later processing anyway.
+data sink for ETL scenarios makes it an ideal location to act as our source of data.
 So the next attempted approach was to use Hadoop and a good single
-node node high performance storage engine to generate smaller data
+node high performance storage engine to generate smaller data
 stores in parallel. That is, a Hadoop job reads data from a source in
 HDFS, re-partitions on a per node basis, and finally writes the data
 to individual stores (for example, BDB) on the local filesystem in the
@@ -117,9 +115,9 @@ requests to the live store must not be impacted during the data load.
 There is a tradeoff between modifying the current index on the live
 server and finishing the bulk load as fast as possible, but that can
 increase I/O and hurt performance. As a result, we completely rebuild
-the index offline. 
+the index offline and also throttle the fetches. 
 \item \emph{Fault tolerance and scalability}. Every step of the data
-load pipeline should be able to handle failures. Hadoop, but its
+load pipeline should be able to handle failures. Hadoop, with its
 ability to deal with failures, is used as the computation layer for
 building the index. Similarly, HDFS's replication provides
 availability. Finally \projectname{} is used as the serving layer, as
@@ -130,7 +128,7 @@ their already existing support for expansion without downtime.
 that data is treated more like code: incorrect or incomplete data
 could have been due to algorithm changes or source data problems. To
 minimize the time in error, the storage engine must support very fast
-rollback to the previous dataset.
+rollback to the previous good state. 
 \end{compactitem}
 
 Our new data deployment pipeline consists of a new storage engine that
@@ -147,19 +145,17 @@ how we dealt with it.
 
 Many storage formats try to build data structures that keep the data
 memory-resident in the process address space, ignoring the effects of
-the operating system's page cache. A classical example is the InnoDB
-storage engine of MySQL, which buffers both key and data pages
-resulting in double caching at both OS as well as MySQL level. The
-several orders of magnitude latency gap between the page cache and
-disk means the only real performance benefit by maintaining our own
-structure is for elements already in the page cache. In fact, this
-custom structure may even start taking memory away from the page
-cache. Rather, this motivated the need of our storage engine to
-exploit the page cache instead of maintaining our own complex data
-structure. Since our data is immutable, \projectname{} memory maps the
-entire index into the address space. Further, since \projectname{} has
-been written in Java and runs on the JVM, delegating the memory
-management to the operating system eases garbage collection tuning.
+the operating system's page cache. The several orders of magnitude 
+latency gap between the page cache and disk means the only real 
+performance benefit by maintaining our own structure is for elements 
+already in the page cache. In fact, this custom structure may even 
+start taking memory away from the page cache. Rather, this motivated 
+the need of our storage engine to exploit the page cache instead of 
+maintaining our own complex data structure. Since our data is immutable, 
+\projectname{} memory maps the entire index into the address space. 
+Further, since \projectname{} has been written in Java and runs on 
+the JVM, delegating the memory management to the operating system 
+eases garbage collection tuning.
 
 \begin{figure}
   \centering
@@ -178,7 +174,7 @@ every partition-replica bucket. We have set a standard naming
 convention for all our chunk files. It follows the pattern
 \verb=<partition id>_<replica id>_<chunk id>.= \verb=<data or index>=,
 where \verb=partition id= is the id of the primary partition and
-\verb=replica id= is a number between 0 to `replication factor'-1.
+\verb=replica id= is a number between 0 to $N$-1.
 Once a key hashes to a particular node, we classify it into the
 correct \verb=partition id= + \verb=replica id= bucket. For example
 the key in Figure \ref{hash}, present in a store using consistent
@@ -271,20 +267,21 @@ One of our requirements was the ability to rollback the data. The
 above chunk files need to be stored in a layered format so as to allow
 rollback. Every time a new copy of the complete data-set is created,
 the system needs to demote the previous copy to an older state.
-Following is how the data is structured for the read-only stores on a
-\projectname{} node. 
 
 Every store is represented by a directory which then contains various
 ``versions'' of the data. Since the data in all the version
 directories, except the serving one, are inactive we are not affecting
 the page cache usage and hence the latency. Since disk is cheap and
 rollbacks are important, keeping some previous copies of the data
-(configurable by the user or admin) is beneficial.
+(configurable by the user or admin) is beneficial. Every version folder
+(named \verb=version-<no>=) has a configurable number associated with it, 
+which should be increase with every new fetch. An example of the version 
+number is the timestamp of push. 
 
 Deploying a new data version is as simple as starting a new version
-folder and changing the symbolic link to the latest data. A rollback
-is as simple as changing the symbolic link to a previous version
-folder and swapping the data in. 
+folder, changing the symbolic link to the latest data and swapping the
+data in. Similarly, a rollback requires changing the symbolic link to a 
+previous version folder and swapping the data in. 
 
 % ========================== READ-ONLY-STORAGE ENGINE  - CHUNK GENERATION ==========================================
 
@@ -342,26 +339,27 @@ reduce (K, Iterator<V> iter)
 \label{fig:mapreduce-chunk-generation}
 \end{figure}
 
-The Hadoop job consists on a simple map phase which partitions the
-data depending on the routing strategy where the partitioner redirects
-keys to the correct reducer; the reduce phase writes the data to a
-single chunk (i.e. a data and index file). Due to Hadoop's generic
+The Hadoop job consists of a simple map phase which partitions the
+data depending on the routing strategy; the partitioner which redirects
+the key to the correct reducer and finally the reduce phase which writes 
+the data to a single chunk (i.e. a data and index file). Due to Hadoop's generic
 \term{InputFormat} mechanics, any source data can be converted to
-\projectname{}. This phase then emits the upper 8~bytes of MD5 of the
-\projectname{} key $N$~times as the map phase key with the map phase
-value equal to a grouped tuple of node id, partition id, replica id
+\projectname{}'s serialization format. The mapper phase then emits the 
+upper 8~bytes of MD5 of the \projectname{} key $N$~times as the map phase 
+key with the map phase value equal to a grouped tuple of node id, partition id, replica id
 and the raw \projectname{} key and value. The custom partitioner then
 generates the chunk id from this key. Since there is a fixed number of
 chunks on a per partition-replica basis, the chunk id is generated
-with a simple mod of the number of chunks. The partitioner uses the
+with a simple mod of the number of chunks. It then uses the
 partition id, replication factor of the store and the chunk id to
 route the key to the correct reducer. Finally, every reducer is
 responsible for a single chunk, meaning that by having more chunks,
 once can increase the parallelism during the build phase. Since Hadoop
 automatically sorts the data based on the key, the process receives
 data in the order necessary for the output data files and can simply
-append to index and data file on HDFS with no extra processing
-required.  
+append data to the index and data file on HDFS with no extra processing
+required. The data layout on HDFS is a directory on a per \projectname{}
+node basis, with the nomenclature of \verb=node-<id>=.
 
 % ========================== READ-ONLY-STORAGE ENGINE  - SEARCH ==========================================
 
@@ -395,7 +393,7 @@ The most time consuming step is the search in the index file. A binary
 search in an index of 1~million keys can result in around 20~key
 comparisons, which means if the cache is not in core, there will be
 20~disk seeks to read one value. As a small optimization, while
-fetching the files from HDFS, Spock transfers the index files after
+fetching the files from HDFS, \projectname{} transfers the index files after
 all data files to aid in keeping the index files in the OS page cache.
 
 Rather than binary search, another search strategy for sorted disk
@@ -408,9 +406,9 @@ helps in the un-cached scenario by reducing the number of disk seeks.
 
 We have also looked into other strategies like Fast and Pegasus. As
 proved in \cite{manolopoulos}, most of these are better suited for
-non-uniform distributions. As MD5 provides a fairly representative
-uniform distribution, there will be minimal speedup from these
-techniques.
+non-uniform distributions. As MD5 (and its sub-sets) provide a fairly 
+representative uniform distribution, there will be minimal speedup 
+from these techniques.
 
 % ========================== READ-ONLY-STORAGE ENGINE  - COMPLETE DATA CYCLE ==========================================
 
@@ -440,10 +438,10 @@ on all \projectname{} nodes. This request is received by each node's
 ``administrative service,'' which then initiates a parallel fetch for
 its respective node folder. While the data is being streamed from
 HDFS, the checksum is validated with the checksum from the build step.
-Spock uses a pull model, rathern than a push model, as it allows
+\projectname{} uses a pull model, rather than a push model, as it allows
 throttling of the fetches in case of latency.
 
-After the data is available on each respective node, Spock must swap
+After the data is available on each respective node, \projectname{} must swap
 the new data-set with the older version. Finally after the fetch is
 complete, the driver triggers a swap operation on all nodes, which is
 co-ordinated via a read-write lock in the storage engine. Each node
@@ -479,7 +477,7 @@ the data with no downtime.
 \label{sec:read_only:data_cycle:rebalancing}
 
 Rebalancing is a major feature which allows \projectname{} to easily
-add or rebalance data around on a live cluster without downtime. This
+rebalance data around on a live cluster without downtime. This
 feature was initially written for the read-write stores but easily
 fits into the read-only cycle due to the static nature of the data.
 Our smallest unit of rebalancing is a partition. In other words,
@@ -502,7 +500,7 @@ cluster topology with changes in ownership of batch of partitions
 moved
 \item Use intermediate cluster topology metadata to generate a set of
 steps that need to be run to finish rebalancing. In this process,
-Spock must take care of all the secondary replica movements that might
+\projectname{} must take care of all the secondary replica movements that might
 be required due to the primary partition movement. This plan is a set
 of donating node id and stealing node id pairs along with the chunk
 files being moved. 

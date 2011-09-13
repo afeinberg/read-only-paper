@@ -24,10 +24,10 @@ The product data cycle in this context consists of a continuous cycle
 of three phases: data collection, processing and finally serving. The
 data collection phase usually involves log ingestion, while the
 processing phase is a distributed parallel computing infrastructure,
-like Hadoop. The end goal of this batch processing is to surface
+like Hadoop~\cite{hadoop}. The end goal of this batch processing is to surface
 insights that can then be provided back to the user. Also with the 
 massive adoption of various batch computing infrastructures like 
-Dyrad\cite{dyrad} and MapReduce\cite{dean} the amount of data generated 
+Dyrad~\cite{dyrad} and MapReduce~\cite{dean} the amount of data generated 
 is growing very fast, thereby requiring our serving layer to cater 
 to more data. 
 
@@ -71,14 +71,15 @@ refreshes.
 
 This paper discusses the following contributions:
 
-\begin{itemize}
+\begin{compactitem}
 	\item A scalable offline index construction data pipeline in Hadoop
         \item Custom storage engine which leverages the operating system's 
 caching for cache management
-\end{itemize}
+\end{compactitem}
 
 Aside from the above contributions, we discuss the related work in Section 
 \S\ref{sec:related_work}. We also provide some experimental evaluation and
-production numbers at \linkedin{} in Section \S\ref{sec:evaluation}.
+production numbers at \linkedin{} in Section \S\ref{sec:evaluation} and 
+conclude in Section \S\ref{sec:conclusion}.
 
 % vim: set ft=tex:
