@@ -27,6 +27,21 @@ processing phase is a distributed parallel computing infrastructure,
 like Hadoop. The end goal of this batch processing is to surface
 insights that can then be provided back to the user. 
 
+\begin{figure}
+\centering
+\subfloat[][]{\label{fig:pymk}
+\includegraphics[scale=0.5]{images/pymk}
+}
+
+\subfloat[][]{\label{fig:browsemaps}
+\includegraphics[width=0.9\columnwidth]{images/browsemaps}
+}
+
+\caption{\subref{fig:pymk}~The ``People You May Know'' module
+\subref{fig:browsemaps}~An example collaborative filtering
+application.}
+\end{figure}
+
 This paper presents Project \projectname{}, our key-value solution for
 the final serving phase of this cycle, and discusses how it fits into
 our product ecosystem. The challenge of this system is the frequent
@@ -56,16 +71,5 @@ refreshes.
 
 \projectname{} is open source and readily available under the Apache
 license. 
-
-\begin{figure}
-\centering
-\subfloat[][]{\label{fig:pymk}\dots figure removed for blind review\dots}
-
-\subfloat[][]{\label{fig:browsemaps}\dots figure removed for blind review\dots}
-
-\caption{\subref{fig:pymk}~The ``People You May Know'' module
-\subref{fig:browsemaps}~An example collaborative filtering
-application.}
-\end{figure}
 
 % vim: set ft=tex:
