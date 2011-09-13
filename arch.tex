@@ -446,10 +446,12 @@ the new data-set with the older version. Finally after the fetch is
 complete, the driver triggers a swap operation on all nodes, which is
 co-ordinated via a read-write lock in the storage engine. Each node
 closes its current set of chunks, open its new set of chunks, and
-memory maps the new index. This operation takes a few milliseconds at
-most as no data reads are required. To provide global atomic
-semantics, the driver ensures that all the nodes have successfully
-swapped their data; rolling back if any swaps have failed.
+memory maps the new index. On a single node, this complete 
+operation takes around 0.012 ms on average with the worst swap time of 
+around 0.050 ms. This is because no data reads are required for the 
+swap. To provide global atomic semantics, the driver ensures that 
+all the nodes have successfully swapped their data; rolling back if 
+any swaps have failed.
 
 % ========================== READ-ONLY-STORAGE ENGINE  - COMPLETE DATA CYCLE - SCHEMA CHANGE ==========================================
 
