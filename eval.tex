@@ -59,7 +59,7 @@ is due to the cap on the number of recommendations.}
 	\hline
 	\end{tabular}
 \end{center}
-	\caption{Production statitics of our largest read-only cluster}
+	\caption{Statitics of our largest read-only cluster at \linkedin{}}
  	\label{tab:production_statistics}
 \end{table}
 
@@ -177,7 +177,7 @@ and \projectname{} nodes. We ran the tests for both uniform as well as
 a Zipfian distribution using YCSB~\cite{ycsb}, an open-source framework 
 for benchmarking cloud data serving systems. In particular,
  we ensure that the hot elements are queried together since that 
-simulates the general site visiting patterns of most websites~\cite{...}.
+simulates the general site visiting patterns of most websites~\cite{zipf}.
 Figure~\ref{16search} shows the maximum median latency of each
 individual node with varying data-set sizes. The hotness of a few keys
 naturally aids cachability, thereby exhibiting an overall lower

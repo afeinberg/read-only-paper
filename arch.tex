@@ -41,7 +41,7 @@ The last module, i.e. the pluggable storage layer, has the same $get$ and $put$ 
 
 
 \noindent 
-Now that we know the individual components, let us look at how \projectname{} is being used inside the complete \linkedin{} stack. As shown in Figure \ref{fullstack} \projectname{} supports two routing modes --- server side and client side routing. Client side routing requires an initial `bootstrap' step where-in it retrieves the metadata required for routing (cluster topology and store definitions) by load balancing to a random node. Once the metadata has been retrieved the client gets the benefit of doing one less hop compared to server side routing since it knows exactly where the replicas for a key are. This is beneficial from a latency as well as throughput perspective since there are less number of services acting as bottlenecks. The disadvantage of client side routing is that it makes the client side code-base large because of the extra routing and replication logic. Also, as we'll further explain in Section~\S\ref{sec:read_only:data_cycle:rebalancing}, it also makes rebalancing of data complicated since the \projectname{} nodes now need a mechanism to update the cluster topology metadata on the live clients. 
+Now that we know the individual components, let us look at how \projectname{} is being used inside the complete \linkedin{} stack. As shown in Figure, \ref{fullstack} \projectname{} supports two routing modes --- server side and client side routing. Client side routing requires an initial `bootstrap' step where-in it retrieves the metadata required for routing (cluster topology and store definitions) by load balancing to a random node. Once the metadata has been retrieved the client gets the benefit of doing one less hop compared to server side routing since it knows exactly where the replicas for a key are. This is beneficial from a latency as well as throughput perspective since there are less number of services acting as bottlenecks. The disadvantage of client side routing is that it makes the client side code-base large because of the extra routing and replication logic. Also, as we'll further explain in Section~\S\ref{sec:read_only:data_cycle:rebalancing}, it also makes rebalancing of data complicated since the \projectname{} nodes now need a mechanism to update the cluster topology metadata on the live clients. 
 
 
 % ========================== READ-ONLY-STORAGE ENGINE  ==========================================
@@ -88,21 +88,22 @@ redundant MySQL servers, which makes the complete process prone to
 failure downtimes. Instead, what if we could use the inherent fault
 tolerance and parallelism of Hadoop and build individual node /
 partition level data stores which could be pulled over by
-\projectname{} for serving? The large-scale adoption of HDFS as the
-data sink for ETL scenarios makes it an ideal location to act as our
-source of data. So the next attempted approach was to use Hadoop and a
-good single node high performance storage engine to generate smaller
-data stores in parallel. That is, a Hadoop job reads data from a
-source in HDFS, re-partitions on a per node basis, and finally writes
-the data to individual stores (for example, BDB) on the local
-filesystem in the reducer phase. The number of reducers were equal to
-the number of nodes, but could have easily been further split on a per
-partition basis. This data is then read from the local filesystem and
-copied onto HDFS from where it can be read by \projectname{}. The
-benefits of this approach is that it leverages Hadoop's fault
-tolerance to build the indexes offline, but it suffers from an extra
-copy from the local file system the reducer nodes to HDFS---which can
-become a real bottleneck with terabytes of data. 
+\projectname{} for serving? The large-scale adoption of HDFS~\cite{hdfs}
+ as the data sink for ETL scenarios makes it an ideal location to 
+act as our source of data.
+So the next attempted approach was to use Hadoop and a good single
+node high performance storage engine to generate smaller data
+stores in parallel. That is, a Hadoop job reads data from a source in
+HDFS, re-partitions on a per node basis, and finally writes the data
+to individual stores (for example, BDB) on the local filesystem in the
+reducer phase. The number of reducers were equal to the number of
+nodes, but could have easily been further split on a per partition
+basis. This data is then read from the local filesystem and copied
+onto HDFS from where it can be read by \projectname{}. The benefits of
+this approach is that it leverages Hadoop's fault tolerance to build
+the indexes offline, but it suffers from an extra copy from the local
+file system the reducer nodes to HDFS---which can become a real
+bottleneck with terabytes of data. 
 
 From the above experiments we came to the conclusion that we required
 our own custom storage engine. Our new custom storage engine, along
@@ -269,12 +270,12 @@ the system needs to demote the previous copy to an older state.
 Every store is represented by a directory which then contains various
 ``versions'' of the data. Since the data in all the version
 directories, except the serving one, are inactive we are not affecting
-the page cache usage and hence the latency. Since disk is cheap and
-rollbacks are important, keeping some previous copies of the data
-(configurable by the user or admin) is beneficial. Every version folder
-(named \verb=version-<no>=) has a configurable number associated with it, 
-which should be increase with every new fetch. An example of the version 
-number is the timestamp of push. 
+the page cache usage and hence the latency. Also since nowadays disk space 
+is cheap and provides very fast sequential writes compared to random reads, 
+keeping these previous copies(number of which is configurable) is beneficial 
+for quick rollback. Every version folder (named \verb=version-<no>=) has a 
+configurable number associated with it, which should increase with every 
+new fetch. An example of the version number is the timestamp of push. 
 
 Deploying a new data version is as simple as starting a new version
 folder, changing the symbolic link to the latest data and swapping the
