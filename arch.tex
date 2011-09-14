@@ -88,8 +88,9 @@ redundant MySQL servers, which makes the complete process prone to
 failure downtimes. Instead, what if we could use the inherent fault
 tolerance and parallelism of Hadoop and build individual node /
 partition level data stores which could be pulled over by
-\projectname{} for serving? The large-scale adoption of HDFS as the
-data sink for ETL scenarios makes it an ideal location to act as our source of data.
+\projectname{} for serving? The large-scale adoption of HDFS~\cite{hdfs}
+ as the data sink for ETL scenarios makes it an ideal location to 
+act as our source of data.
 So the next attempted approach was to use Hadoop and a good single
 node high performance storage engine to generate smaller data
 stores in parallel. That is, a Hadoop job reads data from a source in
