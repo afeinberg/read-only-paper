@@ -43,7 +43,7 @@ The last module, i.e. the pluggable storage layer, has the same $get$ and $put$ 
 
 
 \noindent 
-Now that we know the individual components, let us look at how \projectname{} is being used inside the complete \linkedin{} stack. As shown in Figure \ref{fullstack} \projectname{} supports two routing modes --- server side and client side routing. Client side routing requires an initial `bootstrap' step where-in it retrieves the metadata required for routing (cluster topology and store definitions) by load balancing to a random node. Once the metadata has been retrieved the client gets the benefit of doing one less hop compared to server side routing since it knows exactly where the replicas for a key are. This is beneficial from a latency as well as throughput perspective since there are less number of services acting as bottlenecks. The disadvantage of client side routing is that it makes the client side code-base large because of the extra routing and replication logic. Also, as we'll further explain in Section~\S\ref{sec:read_only:data_cycle:rebalancing}, it also makes rebalancing of data complicated since the \projectname{} nodes now need a mechanism to update the cluster topology metadata on the live clients. 
+Now that we know the individual components, let us look at how \projectname{} is being used inside the complete \linkedin{} stack. As shown in Figure, \ref{fullstack} \projectname{} supports two routing modes --- server side and client side routing. Client side routing requires an initial `bootstrap' step where-in it retrieves the metadata required for routing (cluster topology and store definitions) by load balancing to a random node. Once the metadata has been retrieved the client gets the benefit of doing one less hop compared to server side routing since it knows exactly where the replicas for a key are. This is beneficial from a latency as well as throughput perspective since there are less number of services acting as bottlenecks. The disadvantage of client side routing is that it makes the client side code-base large because of the extra routing and replication logic. Also, as we'll further explain in Section~\S\ref{sec:read_only:data_cycle:rebalancing}, it also makes rebalancing of data complicated since the \projectname{} nodes now need a mechanism to update the cluster topology metadata on the live clients. 
 
 
 % ========================== READ-ONLY-STORAGE ENGINE  ==========================================
@@ -271,12 +271,12 @@ the system needs to demote the previous copy to an older state.
 Every store is represented by a directory which then contains various
 ``versions'' of the data. Since the data in all the version
 directories, except the serving one, are inactive we are not affecting
-the page cache usage and hence the latency. Since disk is cheap and
-rollbacks are important, keeping some previous copies of the data
-(configurable by the user or admin) is beneficial. Every version folder
-(named \verb=version-<no>=) has a configurable number associated with it, 
-which should be increase with every new fetch. An example of the version 
-number is the timestamp of push. 
+the page cache usage and hence the latency. Also since nowadays disk space 
+is cheap and provides very fast sequential writes compared to random reads, 
+keeping these previous copies(number of which is configurable) is beneficial 
+for quick rollback. Every version folder (named \verb=version-<no>=) has a 
+configurable number associated with it, which should increase with every 
+new fetch. An example of the version number is the timestamp of push. 
 
 Deploying a new data version is as simple as starting a new version
 folder, changing the symbolic link to the latest data and swapping the
