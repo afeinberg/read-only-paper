@@ -89,20 +89,20 @@ failure downtimes. Instead, what if we could use the inherent fault
 tolerance and parallelism of Hadoop and build individual node /
 partition level data stores which could be pulled over by
 \projectname{} for serving? The large-scale adoption of HDFS as the
-data sink for ETL scenarios makes it an ideal location to act as our source of data.
-So the next attempted approach was to use Hadoop and a good single
-node high performance storage engine to generate smaller data
-stores in parallel. That is, a Hadoop job reads data from a source in
-HDFS, re-partitions on a per node basis, and finally writes the data
-to individual stores (for example, BDB) on the local filesystem in the
-reducer phase. The number of reducers were equal to the number of
-nodes, but could have easily been further split on a per partition
-basis. This data is then read from the local filesystem and copied
-onto HDFS from where it can be read by \projectname{}. The benefits of
-this approach is that it leverages Hadoop's fault tolerance to build
-the indexes offline, but it suffers from an extra copy from the local
-file system the reducer nodes to HDFS---which can become a real
-bottleneck with terabytes of data. 
+data sink for ETL scenarios makes it an ideal location to act as our
+source of data. So the next attempted approach was to use Hadoop and a
+good single node high performance storage engine to generate smaller
+data stores in parallel. That is, a Hadoop job reads data from a
+source in HDFS, re-partitions on a per node basis, and finally writes
+the data to individual stores (for example, BDB) on the local
+filesystem in the reducer phase. The number of reducers were equal to
+the number of nodes, but could have easily been further split on a per
+partition basis. This data is then read from the local filesystem and
+copied onto HDFS from where it can be read by \projectname{}. The
+benefits of this approach is that it leverages Hadoop's fault
+tolerance to build the indexes offline, but it suffers from an extra
+copy from the local file system the reducer nodes to HDFS---which can
+become a real bottleneck with terabytes of data. 
 
 From the above experiments we came to the conclusion that we required
 our own custom storage engine. Our new custom storage engine, along
@@ -478,12 +478,11 @@ the data with no downtime.
 \label{sec:read_only:data_cycle:rebalancing}
 
 Over time as new stores get added to the cluster, the disk to memory
-ratio increases beyond the initial capacity planning. This can result
-in degrading the serving latency. Since our data is static the 
-na\"{i}ve way to solve this problem is to start a new larger cluster,
-re-push the data and switch the clients over. Unfortunately this
-requires massive co-ordination when dealing with 100+ clients talking
-to 100+ stores.
+ratio increases beyond the initial capacity planning, resulting in
+increased read latency. Since the data is static, the na\"{i}ve
+approach of starting a new larger cluster, re-pushing the data, and
+switching clients will not work as it requires massive co-ordination
+of 100+ clients communicating with 100+ stores.
 
 This motivates the need to have a feature to transparently and 
 incrementally add capacity to the cluster indepedent of the data pushes. 
