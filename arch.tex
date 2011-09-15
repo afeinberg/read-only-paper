@@ -291,52 +291,58 @@ Construction of the chunk files for all \projectname{} nodes is a
 single MapReduce job; the pseudo-code representation is shown in
 Figure~\ref{fig:mapreduce-chunk-generation}.
 
-\begin{figure}
-\centering
-
+\begin{algorithm}
 \scriptsize
-\begin{verbatimtab}
-# numChunks - Number of chunks per bucket
-# repFactor - Replication factor of store
-# topBytes(array, N) - Read top N bytes from array
+\DontPrintSemicolon
+\SetKwFunction{mapper}{map}
+\KwIn{K: raw key}
+\KwIn{V: raw value}
+\SetKwBlock{Map}{map(K,V)}{end}
+\SetKwBlock{Partitioner}{partition(K,V): int}{end}
+\SetKwBlock{Reducer}{reduce(K,Iterator$<$V$>$ Iterator)}{end}
 
-# K - raw key
-# V - raw value
-map(K, V):
-  K' = makeKey(K, V)     	# Create Spock key
-  V' = makeValue(K, V)   	# Create Spock value
-  MD5K' = md5(K')
-  [partitionIds] = preferenceList(MD5K')
-  replicaId = 0			# Replica type - Primary (0)
-  foreach ( partitionId in partitionIds )
-    nodeId = partitionToNode(partitionId)
-    emit(topBytes(MD5K', 8),<nodeId, partitionId, replicaId, K',V'>) 
-    replicaId++     
+\Map{
+	K' $\leftarrow$ MakeKey(K,V)\;
+	V' $\leftarrow$ MakeValue(K,V)\;
+	Replica\_Id $\leftarrow$ 0\;
+	KOut $\leftarrow$ TopBytes(md5(K'),8)\;
+	\ForEach{Partition\_Id $\in$ PreferenceList(md5(K'))}{
+		Node\_Id $\leftarrow$ PartitionToNode(Partition\_Id)\;
+		emit(KOut, [Node\_Id, Partition\_Id, Replica\_Id,K',V'])\;
+		Replica\_Id++\;
+	}
+}
 
-# K - Top 8 bytes of MD5 of Spock key
-# V - <Node Id,Partition Id,Replica Id,Spock key,Spock value>
-# return reducer id
-partitioner(K, V) : int
-  chunkId = topBytes(K, size(int)) % numChunks
-  return ((V.partitionId*repFactor+replicaId)*numChunks)+chunkId
- 
-# K - Same as partitioner
-# V - Same as partitioner
-# position - Offset in data file. Start with 0
-reduce (K, Iterator<V> iter)
-  writeIndexFile(K)
-  writeIndexFile(position)
-  writeDataFile(iter.size)   # number of collided tuples
-  foreach ( V in iter )
-    writeDataFile(V.K'.size) # int
-    writeDataFile(V.V'.size) # int
-    writeDataFile(V.K')
-    writeDataFile(V.V')
-    position += (2 * size(int) + V.K'.size + V.V'.size)
-\end{verbatimtab}
+\BlankLine
+\KwIn{K: Top 8 bytes of MD5 of Spock key}
+\KwIn{V: [Node Id, Partition Id, Replica Id, Spock key, Spock value]}
+
+\Partitioner{
+	Chunk\_Id $\leftarrow$ TopBytes(md5(K'),Size(int)) \% Num\_Chunks\;
+	Bucket\_Id $\leftarrow$ V.Partition\_Id * Replication\_Factor + V.Replica\_Id\;
+	\Return{Bucket\_Id * Num\_Chunks + Chunk\_Id}
+}
+
+
+\BlankLine
+\KwIn{K: Same as partitioner} 
+\KwIn{V: Same as partitioner} 
+
+\Reducer{
+	WriteIndexFile(K)\;
+	WriteIndexFile(Position)\;
+	WriteDataFile(Iterator.size)\;
+	\ForEach{V $\in$ Iterator} {
+		WriteDataFile(Size(V.K'))\;
+		WriteDataFile(Size(V.V'))\;
+		WriteDataFile(V.K')\;
+		WriteDataFile(V.V')\;
+	}
+}
+\BlankLine
 \caption{MapReduce for Chunk generation}
 \label{fig:mapreduce-chunk-generation}
-\end{figure}
+\end{algorithm}
 
 The Hadoop job consists of a simple map phase which partitions the
 data depending on the routing strategy; the partitioner which redirects
