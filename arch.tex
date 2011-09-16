@@ -170,23 +170,23 @@ The data is split into multiple chunks where every chunk is a pair of
 data and index files. This split is necessary to achieve parallelism
 for store building in Hadoop. The system builds multiple chunks for
 every partition-replica bucket. We have set a standard naming
-convention for all our chunk files. It follows the pattern
-\verb=<partition id>_<replica id>_<chunk id>.= \verb=<data or index>=,
-where \verb=partition id= is the id of the primary partition and
-\verb=replica id= is a number between 0 to $N$-1.
-Once a key hashes to a particular node, we classify it into the
-correct \verb=partition id= + \verb=replica id= bucket. For example
-the key in Figure \ref{hash}, present in a store using consistent
-hashing, would fall into the buckets 11\_0 (on node 2) and 11\_1 (on
-node 0). 
+convention for all our chunk files with the pattern
+$\text{\emph{partition id}}\_\text{\emph{replica
+id}}\_\text{\emph{chunk id}}.\{\text{data},\text{index}\}$ where
+\emph{partition id} is the id of the primary partition and
+\emph{replica id} is a number between 0 to $N-1$. Once a key hashes to
+a particular node, we classify it into the correct \emph{partition
+id}, \emph{replica id} bucket. For example the key in
+Figure~\ref{hash}, present in a store using consistent hashing, would
+fall into the buckets~11\_0 (on node~2) and~11\_1 (on node~0). 
 
 The system takes all the tuples in this bucket, splitting them further
-into multiple smaller chunks. The table \ref{tab:node_to_chunk} below
+into multiple smaller chunks. The table~\ref{tab:node_to_chunk} below
 shows the various bucket names (where every bucket will contain
 multiple chunks and each chunk will in turn contain an index and data
 file) for a store with consistent hash routing and replication factor
 2. This assumes that the cluster has the same partition ring topology
-as shown in Figure \ref{hash}. Our initial design started with the
+as shown in Figure~\ref{hash}. Our initial design started with the
 simpler scheme of one bucket per node (i.e. multiple chunks stored on
 a node with no knowledge about partitions), but this smaller
 granularity is necessary to aid in
@@ -253,7 +253,7 @@ files.
 
 The data file is similarly a very highly packed structure where we
 store the number of collided tuples followed by a set of collided
-\verb=[key size, value size, key, value]= list. The important thing to
+\emph{(key size, value size, key, value)} list. The important thing to
 remember here is that we store the raw key bytes instead of the MD5-ed
 key bytes in order to do a comparison during reads. 
 
@@ -270,12 +270,13 @@ the system needs to demote the previous copy to an older state.
 Every store is represented by a directory which then contains various
 ``versions'' of the data. Since the data in all the version
 directories, except the serving one, are inactive we are not affecting
-the page cache usage and hence the latency. Also since nowadays disk space 
-is cheap and provides very fast sequential writes compared to random reads, 
-keeping these previous copies(number of which is configurable) is beneficial 
-for quick rollback. Every version folder (named \verb=version-<no>=) has a 
-configurable number associated with it, which should increase with every 
-new fetch. An example of the version number is the timestamp of push. 
+the page cache usage and hence the latency. Also since nowadays disk
+space is cheap and provides very fast sequential writes compared to
+random reads, keeping these previous copies(number of which is
+configurable) is beneficial for quick rollback. Every version folder
+(named \term{version-\emph{no}}) has a configurable number associated
+with it, which should increase with every new fetch. An example of the
+version number is the timestamp of push. 
 
 Deploying a new data version is as simple as starting a new version
 folder, changing the symbolic link to the latest data and swapping the
@@ -305,11 +306,11 @@ Figure~\ref{fig:mapreduce-chunk-generation}.
 	K' $\leftarrow$ MakeKey(K,V)\;
 	V' $\leftarrow$ MakeValue(K,V)\;
 	Replica\_Id $\leftarrow$ 0\;
-	KOut $\leftarrow$ TopBytes(md5(K'),8)\;
-	\ForEach{Partition\_Id $\in$ PreferenceList(md5(K'))}{
+	KOut $\leftarrow$ TopBytes(MD5(K'),8)\;
+	\ForEach{Partition\_Id $\in$ PreferenceList(MD5(K'))}{
 		Node\_Id $\leftarrow$ PartitionToNode(Partition\_Id)\;
 		emit(KOut, [Node\_Id, Partition\_Id, Replica\_Id,K',V'])\;
-		Replica\_Id++\;
+		Replica\_Id $\leftarrow$ Replica\_Id + 1\;
 	}
 }
 
@@ -318,7 +319,7 @@ Figure~\ref{fig:mapreduce-chunk-generation}.
 \KwIn{V: [Node Id, Partition Id, Replica Id, Spock key, Spock value]}
 
 \Partitioner{
-	Chunk\_Id $\leftarrow$ TopBytes(md5(K'),Size(int)) \% Num\_Chunks\;
+	Chunk\_Id $\leftarrow$ TopBytes(MD5(K'),Size(int)) \% Num\_Chunks\;
 	Bucket\_Id $\leftarrow$ V.Partition\_Id * Replication\_Factor + V.Replica\_Id\;
 	\Return{Bucket\_Id * Num\_Chunks + Chunk\_Id}
 }
@@ -345,26 +346,27 @@ Figure~\ref{fig:mapreduce-chunk-generation}.
 \end{algorithm}
 
 The Hadoop job consists of a simple map phase which partitions the
-data depending on the routing strategy; the partitioner which redirects
-the key to the correct reducer and finally the reduce phase which writes 
-the data to a single chunk (i.e. a data and index file). Due to Hadoop's generic
-\term{InputFormat} mechanics, any source data can be converted to
-\projectname{}'s serialization format. The mapper phase then emits the 
-upper 8~bytes of MD5 of the \projectname{} key $N$~times as the map phase 
-key with the map phase value equal to a grouped tuple of node id, partition id, replica id
-and the raw \projectname{} key and value. The custom partitioner then
-generates the chunk id from this key. Since there is a fixed number of
-chunks on a per partition-replica basis, the chunk id is generated
-with a simple mod of the number of chunks. It then uses the
-partition id, replication factor of the store and the chunk id to
-route the key to the correct reducer. Finally, every reducer is
-responsible for a single chunk, meaning that by having more chunks,
-once can increase the parallelism during the build phase. Since Hadoop
-automatically sorts the data based on the key, the process receives
-data in the order necessary for the output data files and can simply
-append data to the index and data file on HDFS with no extra processing
-required. The data layout on HDFS is a directory on a per \projectname{}
-node basis, with the nomenclature of \verb=node-<id>=.
+data depending on the routing strategy; the partitioner which
+redirects the key to the correct reducer and finally the reduce phase
+which writes the data to a single chunk (i.e. a data and index file).
+Due to Hadoop's generic \term{InputFormat} mechanics, any source data
+can be converted to \projectname{}'s serialization format. The mapper
+phase then emits the upper 8~bytes of MD5 of the \projectname{} key
+$N$~times as the map phase key with the map phase value equal to a
+grouped tuple of node id, partition id, replica id and the raw
+\projectname{} key and value. The custom partitioner then generates
+the chunk id from this key. Since there is a fixed number of chunks on
+a per partition-replica basis, the chunk id is generated with a simple
+mod of the number of chunks. It then uses the partition id,
+replication factor of the store and the chunk id to route the key to
+the correct reducer. Finally, every reducer is responsible for a
+single chunk, meaning that by having more chunks, once can increase
+the parallelism during the build phase. Since Hadoop automatically
+sorts the data based on the key, the process receives data in the
+order necessary for the output data files and can simply append data
+to the index and data file on HDFS with no extra processing required.
+The data layout on HDFS is a directory on a per \projectname{} node
+basis, with the nomenclature of \term{node-\emph{id}}.
 
 % ========================== READ-ONLY-STORAGE ENGINE  - SEARCH ==========================================
 
