@@ -164,13 +164,12 @@ eases garbage collection tuning.
 \end{figure}
 
 Figure~\ref{storage_format} shows the structure of the storage
-engine's data and index files. 
-
-The data is split into multiple chunks where every chunk is a pair of
-data and index files. This split is necessary to achieve parallelism
-for store building in Hadoop. The system builds multiple chunks for
-every partition-replica bucket. We have set a standard naming
-convention for all our chunk files with the pattern
+engine's data and index files. The data is split into multiple chunks 
+where every chunk is a pair of data and index files. This split is 
+necessary to achieve parallelism for store building in Hadoop. The 
+system builds multiple chunks for every partition-replica bucket. 
+We have set a standard naming convention for all our chunk files with 
+the pattern
 $\text{\emph{partition id}}\_\text{\emph{replica
 id}}\_\text{\emph{chunk id}}.\{\text{data},\text{index}\}$ where
 \emph{partition id} is the id of the primary partition and
