@@ -7,7 +7,7 @@
 \usepackage[small,bottomtitles,compact]{titlesec}
 \usepackage[comma,numbers,sort&compress]{natbib}
 \usepackage{booktabs,tabularx,multirow}
-\usepackage{algorithm2e}
+\usepackage[figure]{algorithm2e}
 \usepackage{paralist}
 \usepackage{ifpdf}
 \usepackage[breaklinks,draft]{hyperref}
@@ -17,6 +17,7 @@
   \usepackage{microtype}
 \fi
 \usepackage{moreverb}
+\usepackage{balance}
 
 \newcommand{\projectname}{Spock}
 \newcommand{\linkedin}{Starfleet}
@@ -136,6 +137,7 @@
 \input eval.tex
 \input conclusion.tex
 
+\balance
 \bibliographystyle{plainnat}
 \bibliography{voldemort}
 
