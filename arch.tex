@@ -41,7 +41,7 @@ The last module, i.e. the pluggable storage layer, has the same $get$ and $put$ 
 
 
 \noindent 
-Now that we know the individual components, let us look at how \projectname{} is being used inside the complete \linkedin{} stack. As shown in Figure, \ref{fullstack} \projectname{} supports two routing modes --- server side and client side routing. Client side routing requires an initial `bootstrap' step where-in it retrieves the metadata required for routing (cluster topology and store definitions) by load balancing to a random node. Once the metadata has been retrieved the client gets the benefit of doing one less hop compared to server side routing since it knows exactly where the replicas for a key are. This is beneficial from a latency as well as throughput perspective since there are less number of services acting as bottlenecks. The disadvantage of client side routing is that it makes the client side code-base large because of the extra routing and replication logic. Also, as we'll further explain in Section~\S\ref{sec:read_only:data_cycle:rebalancing}, it also makes rebalancing of data complicated since the \projectname{} nodes now need a mechanism to update the cluster topology metadata on the live clients. 
+Now that we know the individual components, let us look at how \projectname{} is being used inside the complete \linkedin{} stack. As shown in Figure, \ref{fullstack} \projectname{} supports two routing modes --- server side and client side routing. Client side routing requires an initial `bootstrap' step where-in it retrieves the metadata required for routing (cluster topology and store definitions metadata) by load balancing to a random node. Once the metadata has been retrieved the client gets the benefit of doing one less hop compared to server side routing since it knows exactly where the replicas for a key are. This is beneficial from a latency as well as throughput perspective since there are less number of services acting as bottlenecks. The disadvantage of client side routing is that it makes the client side code-base large because of the extra routing and replication logic. Also, as we'll further explain in Section~\S\ref{sec:read_only:data_cycle:rebalancing}, it also makes rebalancing of data complicated since the \projectname{} nodes now need a mechanism to update the cluster topology metadata on the live clients. 
 
 
 % ========================== READ-ONLY-STORAGE ENGINE  ==========================================
@@ -62,26 +62,31 @@ underlying index structure---in this case, a B$^{+}$ tree---which in
 turn results in many disk seeks. To solve this problem, MySQL provides
 a \sql{LOAD DATA} statement that tries to bulk update the underlying
 index, but this requires a lock of the entire table if the MyISAM
-storage engine is used. InnoDB supports row-level locking, but comes
-at the expense of substantial disk space overhead for every tuple.
-Further, to achieve MyISAM-like performance with InnoDB, data must be
-ordered by primary key.
+storage engine is used. This statement works for InnoDB which instead
+supports row-level locking, but comes at the expense of substantial 
+disk space overhead for every tuple. Also to achieve MyISAM-like bulk 
+loading performance, InnoDB prefers data ordered by primary key.
 
-We tried completely offloading the index construction to another
+Another solution to solve the above problem is to bulk load into a 
+different table on the same cluster and use views on the client side to 
+transparently swap to the new table. We attempted this with MyISAM 
+storage engine, opting to skip InnoDB due to the huge space requirements.
+This approach solves the locking problem but still hurts serving 
+latency due to pressure on shared CPU and memory resources.  
+
+We next tried completely offloading the index construction to another
 system as building the index on the serving system has isolation
-problems, particularly with CPU and I/O. We attempted to build MyISAM
-stores offline, opting to skip InnoDB due to the huge space
-requirements. To do so, we leveraged the fact that MySQL allows
-copying of database files from another node into a live database
-directory; thereby automatically making it available for serving. We built a
-separate cluster where-in we would bulk load and then eventually copy
-the data over to the live cluster, but this requires an extra
-maintenance cost of a separate MySQL cluster with exactly the same
-number of nodes as the live one. Further, the lack of ability to load
-compressed data directly makes this process more time consuming, as
-the data is copied multiple times between nodes: once as a flat file
-to the bulk load cluster, then the internal copy during the \sql{LOAD}
-statement, and finally the raw data copy to the actual live database. 
+problems. To do so, we leveraged the fact that MyISAM allows copying 
+of database files from another node into a live database directory; 
+thereby automatically making it available for serving. 
+We built a separate cluster where-in we would bulk load and then eventually 
+copy the data over to the live cluster, but this requires an extra 
+maintenance cost of a separate MySQL cluster with exactly the same number 
+of nodes as the live one. Further, the lack of ability to load compressed 
+data directly makes this process more time consuming, as the data is copied 
+multiple times between nodes: once as a flat file to the bulk load cluster, 
+then the internal copy during the \sql{LOAD} statement, and finally the 
+raw data copy to the actual live database. 
 
 The previous solution is not ideal due to its dependency on the
 redundant MySQL servers, which makes the complete process prone to
@@ -119,22 +124,25 @@ the index offline and also throttle the fetches.
 load pipeline should be able to handle failures. Hadoop, with its
 ability to deal with failures, is used as the computation layer for
 building the index. Similarly, HDFS's replication provides
-availability. Finally \projectname{} is used as the serving layer, as
-its routing strategies provide replica fall back in the case of
-failures. All of these systems can easily scale horizontally due to
+availability for our data. Finally \projectname{} is used as the 
+serving layer, providing fault tolerance with tuple level replication. 
+All of these systems also easily scale horizontally due to
 their already existing support for expansion without downtime. 
 \item \emph{Rollback}. The general trend we notice in our business
 that data is treated more like code: incorrect or incomplete data
-could have been due to algorithm changes or source data problems. To
-minimize the time in error, the storage engine must support very fast
-rollback to the previous good state. 
+could have been due to algorithm changes or source data problems. 
+In such scnearios running a long batch load job to re-populate new
+correct data is not acceptable. So to minimize the time in error, 
+our storage engine must support very fast rollback to the previous 
+good state.
+\item \emph{Handle large data-sets}.  
 \end{compactitem}
 
-Our new data deployment pipeline consists of a new storage engine that
+Our data deployment pipeline consists of a new storage engine that
 is built in Hadoop (\S\ref{sec:read_only:storage_format}), versioned
 for rollback (\S\ref{sec:read_only:versioning}), and deployed. We
-finally conclude by explaining how it fits into the complete data
-deployment cycle along with some real world production scenarios and
+finally conclude by explaining how it fits into the complete data 
+cycle along with some real world production scenarios and
 how we dealt with it. 
 
 % ========================== READ-ONLY-STORAGE ENGINE  - STORAGE FORMAT ==========================================
@@ -344,13 +352,18 @@ Figure~\ref{fig:mapreduce-chunk-generation}.
 \label{fig:mapreduce-chunk-generation}
 \end{algorithm}
 
-The Hadoop job consists of a simple map phase which partitions the
-data depending on the routing strategy; the partitioner which
-redirects the key to the correct reducer and finally the reduce phase
-which writes the data to a single chunk (i.e. a data and index file).
-Due to Hadoop's generic \term{InputFormat} mechanics, any source data
+The Hadoop job consists of a simple MapReduce job which takes as its
+input the cluster topology, store definition and the input data 
+location on HDFS and then takes care of replication and partitioning,
+finally emitting the data into separate node based folders. 
+
+This is achieved by partitioning the data depending on the routing
+strategy in the mapper phase; redirecting the key to the correct reducer 
+in the partitioner phase and finally writing the data to a single
+chunk (i.e. a data and index file) in the correct node folder in the
+reducer phase. Due to Hadoop's generic \term{InputFormat} mechanics, any source data
 can be converted to \projectname{}'s serialization format. The mapper
-phase then emits the upper 8~bytes of MD5 of the \projectname{} key
+phase emits the upper 8~bytes of MD5 of the \projectname{} key
 $N$~times as the map phase key with the map phase value equal to a
 grouped tuple of node id, partition id, replica id and the raw
 \projectname{} key and value. The custom partitioner then generates
@@ -487,9 +500,9 @@ the data with no downtime.
 
 Over time as new stores get added to the cluster, the disk to memory
 ratio increases beyond the initial capacity planning, resulting in
-increased read latency. Since the data is static, the na\"{i}ve
+increased read latency. Our data being static, the na\"{i}ve
 approach of starting a new larger cluster, re-pushing the data, and
-switching clients will not work as it requires massive co-ordination
+switching clients does not work as it requires massive co-ordination
 of 100+ clients communicating with 100+ stores.
 
 This motivates the need to have a feature to transparently and 
@@ -503,24 +516,30 @@ of some partitions to it. The rebalancing process is run by a tool that
 co-ordinates the full process. The following are the steps that
 are followed during the addition of a new node. 
 
-\begin{compactitem}
+\begin{compactenum}
 \item Provide the rebalancing tool with the future cluster topology
 metadata.
+
 \item Using the future cluster topology metadata, generate list of all
 primary partitions that need to be moved
+
 \item Do the following steps for every batch of primary partitions,
 which allows moving the partition in small batches so as to make the
 process checkpoint-able without having to re-fetch too much data. 
-\begin{compactitem}
+
+\begin{compactenum}
+
 \item Generate intermediate cluster topology metadata which is current
 cluster topology with changes in ownership of batch of partitions
 moved
+
 \item Use intermediate cluster topology metadata to generate a set of
 steps that need to be run to finish rebalancing. In this process,
 \projectname{} must take care of all the secondary replica movements that might
 be required due to the primary partition movement. This plan is a set
 of donating node id and stealing node id pairs along with the chunk
 files being moved. 
+
 \item Initiate asynchronous processes (through the administrative
 service) on all the stealer nodes which then start stealing chunk
 files from their corresponding donor nodes. These nodes to go into a
@@ -533,6 +552,7 @@ node basis), the system would need to iterate over all the keys on the
 node and find the correct key set belonging to the moving partition,
 then merging this key set with the live serving index on the stealer
 node's end. 
+
 \item Once the fetches have completed, the rebalancing tool updates
 the intermediate cluster topology on all the nodes while also doing an
 atomic swap of data on the stealer and donor nodes. 
@@ -544,8 +564,10 @@ old metadata. If they contact a node with a request for a key in a
 partition which the node is no more responsible the node sends a
 special exception, which results in a re-bootstrap step along with a
 retry of the previous request.
-\end{compactitem}
-\end{compactitem}
+
+\end{compactenum}
+
+\end{compactenum}
 
 The rebalancing tool has also been designed to handle failure
 scenarios elegantly. Failure during a fetch is not a problem since no
