@@ -305,12 +305,12 @@ Figure~\ref{fig:mapreduce-chunk-generation}.
 \Map{
 	K' $\leftarrow$ MakeKey(K,V)\;
 	V' $\leftarrow$ MakeValue(K,V)\;
-	Replica\_Id $\leftarrow$ 0\;
+	Replica Id $\leftarrow$ 0\;
 	KOut $\leftarrow$ TopBytes(MD5(K'),8)\;
-	\ForEach{Partition\_Id $\in$ PreferenceList(MD5(K'))}{
-		Node\_Id $\leftarrow$ PartitionToNode(Partition\_Id)\;
-		emit(KOut, [Node\_Id, Partition\_Id, Replica\_Id,K',V'])\;
-		Replica\_Id $\leftarrow$ Replica\_Id + 1\;
+	\ForEach{Partition Id $\in$ PreferenceList(MD5(K'))}{
+		Node Id $\leftarrow$ PartitionToNode(Partition Id)\;
+		emit(KOut, [Node Id, Partition Id, Replica Id, K', V'])\;
+		Replica Id $\leftarrow$ Replica Id + 1\;
 	}
 }
 
@@ -319,9 +319,9 @@ Figure~\ref{fig:mapreduce-chunk-generation}.
 \KwIn{V: [Node Id, Partition Id, Replica Id, Spock key, Spock value]}
 
 \Partitioner{
-	Chunk\_Id $\leftarrow$ TopBytes(MD5(K'),Size(int)) \% Num\_Chunks\;
-	Bucket\_Id $\leftarrow$ V.Partition\_Id * Replication\_Factor + V.Replica\_Id\;
-	\Return{Bucket\_Id * Num\_Chunks + Chunk\_Id}
+	Chunk Id $\leftarrow$ TopBytes(MD5(K'),Size(int)) \% Num Chunks\;
+	Bucket Id $\leftarrow$ V.Partition Id * Replication Factor + V.Replica Id\;
+	\Return{Bucket Id * Num Chunks + Chunk Id}
 }
 
 
