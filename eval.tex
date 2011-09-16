@@ -150,7 +150,7 @@ faster cache warming process.
 \begin{figure}
   \centering
     \includegraphics[scale=0.55]{images/search_1node.pdf}
-  \caption{Search Latency vs Time since swap}
+  \caption{Read Latency vs time since swap, showing rate of cache warming}
   \label{search}
 \end{figure}
 
@@ -158,22 +158,15 @@ Table~\ref{mysql:search} shows a comparison of \projectname's
 performance to MySQL on the same 100~GB data-set for varying 
 throughput after warming up the cache. We increased the client 
 side throughput till the actual throughput stopped increasing. 
-Our optimizations for the
-read-only case have resulted in faster serve times: 75% decrease in
-median latency with 20% less latency in the 99th quantile. 
+As is clearly evident our implementation scales to around twice
+the amount of queries per second while maintaining serving latency. 
 
-\begin{table}
-\centering
-\begin{tabular}{ | c | c | c |  }
-\hline
-                & MySQL   & \projectname{} \\ \hline
-Median          & 0.12 ms & 0.028 ms       \\
-99th quantile	& 45 ms   & 36 ms          \\
-\hline
-\end{tabular}
-\caption{}
-\label{mysql:search}
-\end{table}
+\begin{figure}
+  \centering
+    \includegraphics[scale=0.55]{images/mysql_vs_read.pdf}
+  \caption{Read Latency vs varying throughput}
+  \label{mysql:search}
+\end{figure}
 
 To test whether the system scales well with the number of nodes, we
 present read latency numbers for the same random data-set but spread
@@ -195,7 +188,7 @@ latency compared to the uniform distribution.
 \begin{figure}
   \centering
     \includegraphics[scale=0.55]{images/search_16node.pdf}
-  \caption{Median search latency vs varying data size for 16 node cluster}
+  \caption{Read latency vs varying data size for 16 node cluster}
   \label{16search}
 \end{figure}
 
@@ -208,7 +201,7 @@ latency primarily because of the larger data size than that of PYMK.
   \centering
     \includegraphics[scale=0.55]{images/pymk_search.pdf}
     \includegraphics[scale=0.55]{images/browsemap_search.pdf}
-  \caption{Latency vs Time for PYMK and CF}
+  \caption{Read latency vs time since swap, for PYMK and CF}
   \label{production}
 \end{figure*}
 

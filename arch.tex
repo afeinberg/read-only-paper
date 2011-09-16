@@ -159,7 +159,7 @@ eases garbage collection tuning.
 \begin{figure}
   \centering
     \includegraphics[scale=0.45]{images/storage_format.pdf}
-  \caption{Chunk file format}
+  \caption{Chunk file format containing an index and data file}
   \label{storage_format}
 \end{figure}
 
@@ -203,7 +203,7 @@ rebalancing~(\S~\ref{sec:read_only:data_cycle:rebalancing}).
 \hline
     \end{tabular}
 \end{center}
- 	\caption{Node to chunk mapping}
+ 	\caption{Node to chunk mapping for cluster defined by ring in Figure~\ref{hash}}
  	\label{tab:node_to_chunk}
 \end{table}
 
@@ -429,7 +429,7 @@ results in new data being swapped into a \projectname{} store.
 \begin{figure}
   \centering
     \includegraphics[scale=0.60]{images/cycle.pdf}
-  \caption{Read-only data cycle}
+  \caption{Steps involved in the read-only data cycle}
   \label{cycle}
 \end{figure}
 
@@ -572,7 +572,7 @@ during rebalancing.
 \hline
     \end{tabular}
 \end{center}
- 	\caption{New node to chunk mapping}
+ 	\caption{Node to chunk mapping after addition of new node to cluster defined by ring in Figure~\ref{hash}}
  	\label{tab:new_node_to_chunk}
 \end{table}
 
@@ -585,7 +585,7 @@ during rebalancing.
 \hline
     \end{tabular}
 \end{center}
-\caption{Rebalancing plan generated}
+\caption{Rebalancing plan generated for addition of new node in Table~\ref{tab:new_node_to_chunk}}
 \label{tab:rebalance_plan}
 \end{table}
 

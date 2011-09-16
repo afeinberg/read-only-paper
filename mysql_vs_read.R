@@ -1,0 +1,5 @@
+library(ggplot2)
+r <-read.csv("data/mysql_vs_read", sep="\t")
+s <- qplot(QPS, Median, data = r, geom=c("point", "line"), shape = Type, fontsize=14, theme_blank, xlab ="throughput (qps)", ylab="median latency (ms)") + opts(legend.position="top", legend.direction="horizontal") + scale_shape(name="")
+pdf("images/mysql_vs_read.pdf", width=5, height=4)
+print(s, newpage=F)
