@@ -135,7 +135,18 @@ In such scnearios running a long batch load job to re-populate new
 correct data is not acceptable. So to minimize the time in error, 
 our storage engine must support very fast rollback to the previous 
 good state.
-\item \emph{Handle large data-sets}.  
+\item \emph{Handle large data-sets}. Hadoop has successfully help
+scale out data generation at commodity prices feasible.
+This coupled with the rise of machine learning at internet companies 
+leads to large data sets and opportunities to run potentially complex 
+algorithms on them as a core production use case. Combination of 
+the above two has led to large, cheap production of data which can 
+be used as part of the product. Classic example of this for social 
+networks includes storing relationships between pair of users,
+or between users and an entity. When dealing with millions of users, 
+this pairs data can easily reach billions of tuples, motivating
+our storage engine to have support for TBs of data and perform 
+well under large ratios of data to RAM ratio.
 \end{compactitem}
 
 Our data deployment pipeline consists of a new storage engine that
