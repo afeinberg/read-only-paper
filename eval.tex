@@ -13,10 +13,14 @@ user-facing features: ``People You May Know'' (PYMK,
 c.f.~Figure~\ref{fig:pymk}) and ``Viewers of this profile also
 viewed'' (collaborative filtering or CF,
 c.f.~Figure~\ref{fig:browsemaps}). All tests were run on Linux~2.6.18
-machines with Dual CPU (each having 8~cores running at~2.67 GHz),
+machines with Dual CPU (each having 64-bit 8~cores running at~2.67 GHz),
 24~GB RAM and 6~RAID~10 drives. For the MyISAM tests, we ran MySQL
-Community Edition version~5.0.27. We start by describing the data-sets
-in detail.
+Community Edition version~5.0.27. 
+
+Since the read-only storage engine relies on OS page cache, we gave 
+it only 4 GB JVM heap. Similarly since MyISAM uses a special key cache
+for index blocks and the page cache for data blocks, we chose the same
+4 GB for \emph{key\_buffer\_size}. We start by describing the data-sets in detail.
 
 \begin{compactitem}
 \item \emph{Fixed value size data-set}. The key is a long between
@@ -39,7 +43,7 @@ Figure~\ref{distribution} shows the value size distribution for CF.
   \centering
     \includegraphics[scale=0.55]{images/data_distribution.pdf}
   \caption{Value size distributions for PYMK and CF. The abrupt stop
-is due to the cap on the number of recommendations.}
+is due to the cap on the number of recommendations we provide.}
   \label{distribution}
 \end{figure}
 
@@ -151,8 +155,10 @@ faster cache warming process.
 \end{figure}
 
 Table~\ref{mysql:search} shows a comparison of \projectname's
-performance to MySQL on the same 100~GB data-set for a fixed
-throughput of 1000~queries per second. Our optimizations for the
+performance to MySQL on the same 100~GB data-set for varying 
+throughput after warming up the cache. We increased the client 
+side throughput till the actual throughput stopped increasing. 
+Our optimizations for the
 read-only case have resulted in faster serve times: 75% decrease in
 median latency with 20% less latency in the 99th quantile. 
 
@@ -173,11 +179,14 @@ To test whether the system scales well with the number of nodes, we
 present read latency numbers for the same random data-set but spread
 over 16~machines. The data was fetched by \projectname{} at a steady
 rate bound by the network; we saturated the 1~Gbit line between HDFS
-and \projectname{} nodes. We ran the tests for both uniform as well as
-a Zipfian distribution using YCSB~\cite{ycsb}, an open-source framework 
-for benchmarking cloud data serving systems. In particular,
- we ensure that the hot elements are queried together since that 
-simulates the general site visiting patterns of most websites~\cite{zipf}.
+and \projectname{} nodes. The read tests were run for both uniform as well as
+Zipfian distribution using YCSB~\cite{ycsb}, an open-source framework 
+for benchmarking cloud data serving systems, with number of clients fixed
+at 100 threads. The Zipfian distribution ensures that the hot elements are 
+queried together since that simulates the general site visiting patterns 
+of most websites~\cite{zipf}. We also observed that the separate node
+running the client was never a bottleneck since most of the time was
+spent in retrieving the data.
 Figure~\ref{16search} shows the maximum median latency of each
 individual node with varying data-set sizes. The hotness of a few keys
 naturally aids cachability, thereby exhibiting an overall lower

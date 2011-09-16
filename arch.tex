@@ -164,13 +164,12 @@ eases garbage collection tuning.
 \end{figure}
 
 Figure~\ref{storage_format} shows the structure of the storage
-engine's data and index files. 
-
-The data is split into multiple chunks where every chunk is a pair of
-data and index files. This split is necessary to achieve parallelism
-for store building in Hadoop. The system builds multiple chunks for
-every partition-replica bucket. We have set a standard naming
-convention for all our chunk files. It follows the pattern
+engine's data and index files. The data is split into multiple chunks 
+where every chunk is a pair of data and index files. This split is 
+necessary to achieve parallelism for store building in Hadoop. 
+The system builds multiple chunks for every partition-replica bucket. 
+We have set a standard naming convention for all our chunk files. 
+It follows the pattern 
 \verb=<partition id>_<replica id>_<chunk id>.= \verb=<data or index>=,
 where \verb=partition id= is the id of the primary partition and
 \verb=replica id= is a number between 0 to $N$-1.
@@ -305,10 +304,10 @@ Figure~\ref{fig:mapreduce-chunk-generation}.
 	K' $\leftarrow$ MakeKey(K,V)\;
 	V' $\leftarrow$ MakeValue(K,V)\;
 	Replica\_Id $\leftarrow$ 0\;
-	KOut $\leftarrow$ TopBytes(md5(K'),8)\;
+	Kout $\leftarrow$ TopBytes(md5(K'),8)\;
 	\ForEach{Partition\_Id $\in$ PreferenceList(md5(K'))}{
 		Node\_Id $\leftarrow$ PartitionToNode(Partition\_Id)\;
-		emit(KOut, [Node\_Id, Partition\_Id, Replica\_Id,K',V'])\;
+		emit(Kout, [Node\_Id, Partition\_Id, Replica\_Id,K',V'])\;
 		Replica\_Id++\;
 	}
 }
