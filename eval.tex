@@ -83,7 +83,7 @@ parallelism. This also resulted in fixed number of chunks being
 generated.
 
 In case of MySQL, the build time is the completion time of the
-\sql{LOAD DATA INFILE} command. This ignores the time it took convert
+\sql{LOAD DATA INFILE} command. This ignores the time it took to convert
 the data to TSV and copy it over to the MySQL node. Some optimizations 
 to make MySQL faster include increasing the MySQL bulk insert buffer 
 size and the MyISAM specific sort buffer size to 256 MB each and also 
@@ -109,7 +109,9 @@ which was chosen as the keys were 12~bytes long (8~byte MD5 and 4~byte
 offset) and the system page size is~4096 bytes. This meant the best
 block size would be approximately $4096/12 \sim 340$. As is clearly
 evident, MySQL exhibits extremely slow build times even after being
-alloted a huge buffer size. The optimized B$^{+}$, on the other hand,
+alloted a huge buffer size. On running a simple I/O benchmark during
+the build we notice that MySQL does around 1.4 times more data output
+compared our implementation. The optimized B$^{+}$, on the other hand,
 performs well for small sizes but deviates at larger input sizes due
 to the extra I/O required: extra disk writes for the higher levels of
 the tree are necessary. For a fixed block size, the extra disk writes
@@ -120,7 +122,7 @@ block size~$b$, which is machine-specific.
 \begin{figure}
   \centering
     \includegraphics[scale=0.55]{images/build.pdf}
-  \caption{Build time vs varying data size}
+  \caption{The time to complete the build with varying input data size. We terminated the MySQL test early due to prolong data load time} 
   \label{build}
 \end{figure}
 
@@ -145,12 +147,13 @@ interpolation search, on the other hand, performs only 4~lookups.
 While this results in an initial low read latency, it comes at the
 expense that much of the index is uncached in the long run. Our
 production systems are currently running binary search due to this
-faster cache warming process.  
+faster cache warming process. Also all numbers presented for read-only
+storage engine after this use binary search.  
 
 \begin{figure}
   \centering
     \includegraphics[scale=0.55]{images/search_1node.pdf}
-  \caption{Read Latency vs time since swap, showing rate of cache warming}
+  \caption{The single node median read latency taken at 1 minute intervals since the swap. The slope of the graph shows the rate of cache warming}
   \label{search}
 \end{figure}
 
@@ -159,12 +162,12 @@ performance to MySQL on the same 100~GB data-set for varying
 throughput after warming up the cache. We increased the client 
 side throughput till the actual throughput stopped increasing. 
 As is clearly evident our implementation scales to around twice
-the amount of queries per second while maintaining serving latency. 
+the amount of queries per second while maintaining the median latency. 
 
 \begin{figure}
   \centering
     \includegraphics[scale=0.55]{images/mysql_vs_read.pdf}
-  \caption{Read Latency vs varying throughput}
+  \caption{Single node read latency after warming up the cache for a while. This figure shows the change in latency as we vary the client throughput}
   \label{mysql:search}
 \end{figure}
 
