@@ -310,13 +310,22 @@ Figure~\ref{fig:mapreduce-chunk-generation}.
 \begin{algorithm}
 \scriptsize
 \DontPrintSemicolon
-\SetKwFunction{mapper}{map}
-\KwIn{K: raw key}
-\KwIn{V: raw value}
 \SetKwBlock{Map}{map(K,V)}{end}
 \SetKwBlock{Partitioner}{partition(K,V): int}{end}
 \SetKwBlock{Reducer}{reduce(K,Iterator$<$V$>$ Iterator)}{end}
 
+{\bf Global Input}: Num Chunks: Number of chunks per bucket\;
+{\bf Global Input}: Replication Factor: Tuple replicas for the store\;
+{\bf Global Input}: Cluster: The cluster topology\;
+{\bf Function}: TopBytes(x,n): Returns top n bytes of x\;
+{\bf Function}: MD5(x): Returns MD5 of x\;
+{\bf Function}: PreferenceList(x): Partition list for key x\;
+{\bf Function}: Size(x): Return size in bytes\;
+
+\BlankLine
+\BlankLine
+\KwIn{K: raw key}
+\KwIn{V: raw value}
 \Map{
 	K' $\leftarrow$ MakeKey(K,V)\;
 	V' $\leftarrow$ MakeValue(K,V)\;
@@ -332,7 +341,6 @@ Figure~\ref{fig:mapreduce-chunk-generation}.
 \BlankLine
 \KwIn{K: Top 8 bytes of MD5 of Spock key}
 \KwIn{V: [Node Id, Partition Id, Replica Id, Spock key, Spock value]}
-
 \Partitioner{
 	Chunk Id $\leftarrow$ TopBytes(MD5(K'),Size(int)) \% Num Chunks\;
 	Bucket Id $\leftarrow$ V.Partition Id * Replication Factor + V.Replica Id\;
@@ -343,7 +351,7 @@ Figure~\ref{fig:mapreduce-chunk-generation}.
 \BlankLine
 \KwIn{K: Same as partitioner} 
 \KwIn{V: Same as partitioner} 
-
+\KwData{Position: Continuous offset into data file}
 \Reducer{
 	WriteIndexFile(K)\;
 	WriteIndexFile(Position)\;
@@ -353,6 +361,7 @@ Figure~\ref{fig:mapreduce-chunk-generation}.
 		WriteDataFile(Size(V.V'))\;
 		WriteDataFile(V.K')\;
 		WriteDataFile(V.V')\;
+		Position += Size(V.K')+Size(V.V')+Size(2*Int)
 	}
 }
 \BlankLine
