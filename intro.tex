@@ -8,7 +8,7 @@ application exposing insights to the user. Typical products include:
 others one might know on the social
 network~(c.f.~Figure~\ref{fig:pymk}); collaborative filtering, which
 showcases relationships between pairs of items based on the wisdom of
-the crowd~(c.f.~Figure~\ref{fig:browsemaps}); job and other entity
+the crowd~(c.f.~Figure~\ref{fig:browsemaps}); entity
 recommendations; and more. \linkedin\footnote{Anonymized name} is a
 social network with more than 120~million members consisting of
 these and twenty other data-derived products. 
@@ -66,8 +66,8 @@ computing infrastructure with little to no latency requirements, which
 \projectname{} leverages to build its index and data files in Hadoop
 to support a high throughput for batch refreshes. The system provides
 excellent live serving performance: our evaluation, and the results we
-see in production, show that the system yields sub-20~ms average read
-times---even during data refreshes. 
+see in production, show that the system yields 5~ms median read
+latency---even during data refreshes. 
 
 \projectname{} supports instantaneous rollback, where data can be
 restored to a clean copy minimizing the time in error, which helps

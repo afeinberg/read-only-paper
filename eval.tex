@@ -14,8 +14,8 @@ c.f.~Figure~\ref{fig:pymk}) and ``Viewers of this profile also
 viewed'' (collaborative filtering or CF,
 c.f.~Figure~\ref{fig:browsemaps}). All tests were run on Linux~2.6.18
 machines with Dual CPU (each having 64-bit 8~cores running at~2.67 GHz),
-24~GB RAM and 6~RAID~10 drives. For the MyISAM tests, we ran MySQL
-Community Edition version~5.0.27. 
+24~GB RAM and 6~RAID~10 drives. We used Community Edition
+version 5.0.27 and MyISAM storage engine for all our MySQL tests.
 
 Since the read-only storage engine relies on OS page cache, we gave 
 it only 4 GB JVM heap. Similarly since MyISAM uses a special key cache
@@ -23,7 +23,7 @@ for index blocks and the page cache for data blocks, we chose the same
 4 GB for \emph{key\_buffer\_size}. We start by describing the data-sets in detail.
 
 \begin{compactitem}
-\item \emph{Fixed value size data-set}. The key is a long between
+\item \emph{Random data-set}. The key is a long between
 0 and a varying number. The value is a fixed 1024 bytes size random
 string. 
 \item \emph{PYMK data-set}. Users are presented with recommendations
@@ -32,7 +32,7 @@ is presented as a store where they key is the logged in user's id
 while the value is a list of integer recommended ids and a float
 score. Figure~\ref{distribution} shows the value size distribution for
 this store. 
-\item \emph{Collaborative filtering data-set}. This product shows
+\item \emph{Collaborative filtering (CF) data-set}. This product shows
 other viewed profiles in the same session as the visited member's
 profile. The value is a list of 2 integer identifiers, a string
 indicating the entity type, and a float score.
@@ -74,7 +74,6 @@ which means the build and push phase must be fast. Push times are
 entirely dependent on available network bandwidth, so we focus on
 build times.
  
-To ensure fair comparisons, we built all our stores on a single node.
 The build time in case of \projectname's Hadoop workflow includes the
 time to generate the chunk mapping in the map phase, shuffle the data,
 and finally, in the reduce phase, emit the store files. The number of
@@ -83,12 +82,13 @@ parallelism. This also resulted in fixed number of chunks being
 generated.
 
 In case of MySQL, the build time is the completion time of the
-\sql{LOAD DATA INFILE} command. This ignores the time it took to convert
-the data to TSV and copy it over to the MySQL node. Some optimizations 
-to make MySQL faster include increasing the MySQL bulk insert buffer 
-size and the MyISAM specific sort buffer size to 256 MB each and also 
-delaying the re-creation of the index to a latter time by running 
-\sql{ALTER TABLE...DISABLE KEYS} statement before the load. 
+\sql{LOAD DATA INFILE} command on an empty table. This ignores the 
+time it took to convert the data to TSV and copy it over to the MySQL 
+node. Some optimizations to make MySQL faster include increasing the 
+MySQL bulk insert buffer size and the MyISAM specific sort buffer 
+size to 256 MB each and also delaying the re-creation of the index 
+to a latter time by running \sql{ALTER TABLE...DISABLE KEYS} statement 
+before the load. 
 
 Besides the B$^{+}$ tree structure built inside MySQL, we build our
 own B$^{+}$ tree structure tailored to Hadoop. Instead of generating
@@ -108,10 +108,10 @@ the input data-set. The block size~$b$ for the B$^{+}$ was set to~340,
 which was chosen as the keys were 12~bytes long (8~byte MD5 and 4~byte
 offset) and the system page size is~4096 bytes. This meant the best
 block size would be approximately $4096/12 \sim 340$. As is clearly
-evident, MySQL exhibits extremely slow build times even after being
-alloted a huge buffer size. On running a simple I/O benchmark during
-the build we notice that MySQL does around 1.4 times more data output
-compared our implementation. The optimized B$^{+}$, on the other hand,
+evident, MySQL exhibits extremely slow build times since it buffers
+the changes to the index before flushing it to disk. Also a simple
+I/O benchmark run during the test shows that MySQL outputs around 
+1.4 times more data over a longer period of time. The optimized B$^{+}$, on the other hand,
 performs well for small sizes but deviates at larger input sizes due
 to the extra I/O required: extra disk writes for the higher levels of
 the tree are necessary. For a fixed block size, the extra disk writes
@@ -134,21 +134,31 @@ data-set, we used 10~million requests with simulated values following
 a uniform distribution. For the PYMK and CF data-set, we use a
 snapshot of member activity for one high traffic day.
 
-We first try to understand the performance implications of binary
-search against interpolation search. In particular, we are interested
-in measuring how fast the index can get paged into the OS's page
-cache. We ran tests on a 100~GB of data on a single node with the page
-cache being flushed between test runs. Figure~\ref{search} shows the
-median latency over time. Binary search initially starts with a high
-median latency, but the slope of the line is steeper compared to that
-of interpolation search. This is because binary search did an average
-of 17.5~lookups thereby touching more parts of the index;
-interpolation search, on the other hand, performs only 4~lookups.
-While this results in an initial low read latency, it comes at the
-expense that much of the index is uncached in the long run. Our
-production systems are currently running binary search due to this
-faster cache warming process. Also all numbers presented for read-only
-storage engine after this use binary search.  
+We first try to measure how fast the index can get paged into the OS's
+page cache. We ran tests on a 100~GB random data-set on a single node
+and report the median latency after swap for a continuous stream of 
+uniformally distributed requests. For MySQL, we created a view 
+on an existing table, bulk loaded into a new table and swapped the view 
+to the new table without stopping the requests. Similarly for our 
+storage engine we used the complete data-pipeline, described in Section
+~\ref{sec:read_only:data_cycle}, to swap new data. The single node was 
+configured to have just one partition and one chunk per chunk bucket. 
+We also compared the binary and interpolation search algorithms for 
+read-only storage engine.  
+
+Figure~\ref{search} shows the median latency versus time since the swap.
+MySQL system starts with a very high median latency due to the un-cached
+index and falls slowly to the stable 1.4 ms mark. On the other hand, our
+storage engine has a relatively cached index since our swap retrieves index
+files after the data files. Binary search initially starts with a high 
+median latency compared to interpolation, but the slope of the line 
+is steeper. This is because binary search did an average of 8~lookups 
+thereby touching more parts of the index; interpolation search, on the 
+other hand, performs an average of only 1~lookup. While this results 
+in an initial low read latency, it comes at the expense that much of the 
+index is uncached in the long run. Our production systems are currently 
+running binary search due to this faster cache warming process. All numbers 
+presented henceforth for read-only storage engine after this use binary search.  
 
 \begin{figure}
   \centering
@@ -157,7 +167,7 @@ storage engine after this use binary search.
   \label{search}
 \end{figure}
 
-Table~\ref{mysql:search} shows a comparison of \projectname's
+Figure~\ref{mysql:search} also shows a comparison of \projectname's
 performance to MySQL on the same 100~GB data-set for varying 
 throughput after warming up the cache. We increased the client 
 side throughput till the actual throughput stopped increasing. 

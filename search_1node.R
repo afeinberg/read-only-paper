@@ -2,7 +2,14 @@ library(ggplot2)
 r <-read.csv("data/search_1node", sep="\t")
 interpolation <- melt(r, 1,2)
 binary <- melt(r, 1, 3)
-c <- rbind(interpolation,binary)
-s <- qplot(Minutes, value, data = c, geom=c("point", "line"), shape = variable, fontsize=14, theme_blank, xlab ="time since swap (mins)", ylab ="median latency (ms)") + opts(legend.position="top", legend.direction="horizontal") + scale_shape(name="")
+mysql <- melt(r, 1, 4)
+xlab <- c(0, 30, 60, 90, 120, 150, 180)
+ylab <- c(0.2, 0.4, 0.8, 1.6, 3.2, 6.4, 12.8, 25.6)
+c <- rbind(interpolation,binary, mysql)
+s <- qplot(Minutes, value, data = c, shape = variable, fontsize=14, theme_blank, xlab ="time since swap (mins)", ylab ="median latency (ms)") + 
+	opts(legend.position="top", legend.direction="horizontal", size=0.5) + 
+	scale_shape(name="") + 
+	scale_x_continuous("time singe swap (mins)", breaks=xlab, labels=xlab) +
+	scale_y_log2("median latency (ms)", breaks=ylab, label=ylab)
 pdf("images/search_1node.pdf", width=5, height=4)
 print(s, newpage=F)
