@@ -59,8 +59,6 @@ is due to the cap on the number of recommendations we provide.}
 	Min store size &		46 KB	\\
 	Max number of store swaps per day & 66	\\
 	\hline
-	Peak qps across all boxes & 	10K \\
-	\hline
 	\end{tabular}
 \end{center}
 	\caption{Statitics of our largest read-only cluster at \linkedin{}}
@@ -107,22 +105,27 @@ Figure~\ref{build} shows the build time as we increased the size of
 the input data-set. The block size~$b$ for the B$^{+}$ was set to~340,
 which was chosen as the keys were 12~bytes long (8~byte MD5 and 4~byte
 offset) and the system page size is~4096 bytes. This meant the best
-block size would be approximately $4096/12 \sim 340$. As is clearly
-evident, MySQL exhibits extremely slow build times since it buffers
-the changes to the index before flushing it to disk. Also a simple
-I/O benchmark run during the test shows that MySQL outputs around 
-1.4 times more data over a longer period of time. The optimized B$^{+}$, on the other hand,
-performs well for small sizes but deviates at larger input sizes due
-to the extra I/O required: extra disk writes for the higher levels of
-the tree are necessary. For a fixed block size, the extra disk writes
-are linear with the number of tuples.  Another disadvantage of the
-B$^{+}$ tree approach is that the serving latency is sensitive to the
-block size~$b$, which is machine-specific. 
+block size would be approximately $4096/12 \sim 340$. 
+
+As is clearly evident, MySQL exhibits extremely slow build times since it buffers
+the changes to the index before flushing it to disk. Also due to the
+incremental changes required to the index on disk, MySQL does around
+1.4 times more I/O than our implementation. This number would amplify 
+if we had bulk loaded into a non-empty table. The optimized B$^{+}$, 
+on the other hand, performs well for small sizes but deviates at larger 
+input sizes due to the extra I/O required: extra disk writes for the 
+higher levels of the tree are necessary. For a fixed block size, 
+the extra disk writes are linear with the number of tuples. 
+Further, we do not discuss the serving latency for the custom B$^{+}$ tree 
+implementation since it is sensitive to machine-specific block size~$b$.
+% Should we mention that this implementation also had file size
+% problems  = multiple small HDFS files, but can be solved in future work 
+% by using array based single file
 
 \begin{figure}
   \centering
     \includegraphics[scale=0.55]{images/build.pdf}
-  \caption{The time to complete the build with varying input data size. We terminated the MySQL test early due to prolong data load time} 
+  \caption{The time to complete the build for varying input data size. We terminated the MySQL test early due to prolong data load time} 
   \label{build}
 \end{figure}
 
@@ -163,7 +166,7 @@ presented henceforth for read-only storage engine after this use binary search.
 \begin{figure}
   \centering
     \includegraphics[scale=0.55]{images/search_1node.pdf}
-  \caption{The single node median read latency taken at 1 minute intervals since the swap. The slope of the graph shows the rate of cache warming}
+  \caption{Single node median read latency taken at 1 minute intervals since the swap. The slope of the graph shows the rate of cache warming}
   \label{search}
 \end{figure}
 
@@ -186,35 +189,35 @@ present read latency numbers for the same random data-set but spread
 over 16~machines. The data was fetched by \projectname{} at a steady
 rate bound by the network; we saturated the 1~Gbit line between HDFS
 and \projectname{} nodes. The read tests were run for both uniform as well as
-Zipfian distribution using YCSB~\cite{ycsb}, an open-source framework 
+zipfian distribution using YCSB~\cite{ycsb}, an open-source framework 
 for benchmarking cloud data serving systems, with number of clients fixed
 at 100 threads. The Zipfian distribution ensures that the hot elements are 
 queried together since that simulates the general site visiting patterns 
 of most websites~\cite{zipf}. We also observed that the separate node
 running the client was never a bottleneck since most of the time was
 spent in retrieving the data.
-Figure~\ref{16search} shows the maximum median latency of each
-individual node with varying data-set sizes. The hotness of a few keys
-naturally aids cachability, thereby exhibiting an overall lower
-latency compared to the uniform distribution. 
+Figure~\ref{16search} shows the overall client side median latency while varying 
+the data-set sizes. The hotness of a few keys naturally aids cachability, 
+thereby exhibiting an overall lower latency for zipfian compared to 
+the uniform distribution. 
 
 \begin{figure}
   \centering
     \includegraphics[scale=0.55]{images/search_16node.pdf}
-  \caption{Read latency vs varying data size for 16 node cluster}
+  \caption{Client side median latency with varying data size for 2 request distributions, on a 16 node cluster. We stopped after 1 TB due to disk space requirements on the cluster}
   \label{16search}
 \end{figure}
 
 Finally, Figure~\ref{production} shows the PYMK and CF read latencies
 in our production cluster. The figure shows the average latency across
-all server nodes immediately after a new data swap. CF has a higher
+all server nodes before and after a data swap. CF has a higher
 latency primarily because of the larger data size than that of PYMK.
 
 \begin{figure*}
   \centering
     \includegraphics[scale=0.55]{images/pymk_search.pdf}
     \includegraphics[scale=0.55]{images/browsemap_search.pdf}
-  \caption{Read latency vs time since swap, for PYMK and CF}
+  \caption{5 minutes sliding average read latency across all server nodes on our largest cluster over time. The new data-set is swapped in around the 20 minute mark for both graphs}
   \label{production}
 \end{figure*}
 
