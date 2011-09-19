@@ -1,13 +1,34 @@
 \section{Project \projectname{}}
 \label{sec:system_architecture}
 
-A \projectname{} \emph{cluster} can contain multiple \emph{nodes}, each with a unique id. All the nodes in the cluster store the same number of \emph{stores} - which correspond to database tables. General usage patterns have shown that a site-facing feature may map to either one store or multiple stores. For example, a feature dealing with group recommendation will map to two stores: one recording member id to recommended group ids and second recording a group id to their corresponding description. Every store has the following list of configurable parameters, which are identical to Dynamo's parameters. 
+A \projectname{} \emph{cluster} can contain multiple \emph{nodes},
+each with a unique id. All the nodes in the cluster store the same
+number of \emph{stores} - which correspond to database tables. General
+usage patterns have shown that a site-facing feature may map to either
+one store or multiple stores. For example, a feature dealing with
+group recommendation will map to two stores: one recording member id
+to recommended group ids and second recording a group id to their
+corresponding description. Every store has the following list of
+configurable parameters, which are identical to Dynamo's parameters. 
 \begin{compactitem}
-	\item \emph {Replication factor} ($N$) - Number of nodes onto which each key-value tuple is replicated
-	\item \emph {Required reads} ($R$) - Number of nodes \projectname{} reads from in parallel during a $get$ before declaring a success
-	\item \emph {Required writes} ($W$) - Number of node responses \projectname{} blocks for before declaring success during a $put$
-	\item \emph {Key/Value serializer and compression} - \projectname{} can have different serialization schema for key and value. For the custom batch data use-case, \projectname{} uses a custom binary JSON format. \projectname{} also supports per-tuple based compression that can be applied to either key, or value, or both. The serialization / compression is completely dealt by a component which resides on the client side with the server only dealing with raw byte arrays. 
-	\item \emph {Storage type} - \projectname{} supports various read-write storage engine formats: Berkeley DB (BDB)~\cite{bdb} Java Edition, in-memory hash map and MySQL. \projectname{} also supports a custom read-only storage engine, which is the focus of this paper.  
+  \item \emph {Replication factor} ($N$) - Number of nodes onto which
+each key-value tuple is replicated
+  \item \emph {Required reads} ($R$) - Number of nodes \projectname{}
+reads from in parallel during a $get$ before declaring a success
+  \item \emph {Required writes} ($W$) - Number of node responses
+\projectname{} blocks for before declaring success during a $put$
+  \item \emph {Key/Value serializer and compression} - \projectname{}
+can have different serialization schema for key and value. For the
+custom batch data use-case, \projectname{} uses a custom binary JSON
+format. \projectname{} also supports per-tuple based compression. The
+serialization and compression is completely dealt by a component which
+resides on the client side with the server only dealing with raw byte
+arrays. 
+  \item \emph {Storage type} - \projectname{} supports various
+read-write storage engine formats: Berkeley DB (BDB) Java
+Edition~\cite{bdb}, an in-memory hash map, and MySQL. \projectname{}
+also supports a custom read-only storage engine, which is the focus of
+this paper.  
 \end{compactitem}
 
 \begin{figure}
@@ -17,13 +38,44 @@ A \projectname{} \emph{cluster} can contain multiple \emph{nodes}, each with a u
   \label{arch}
 \end{figure}
 
-\projectname{} has a pluggable architecture, as shown in Figure \ref{arch}. Each box represents a module, all of which share the same code interface. Every module has exactly one functionality, making it easy to interchange modules and place them in any order. For example, we can have the routing module on either the client side or the server side. Functional separation at the module level also allows us to easily mock these modules for testing purposes. For example, mocked storage engine backed by hash map for unit tests. 
+\projectname{} has a pluggable architecture, as shown in
+Figure~\ref{arch}. Each box represents a module, all of which share
+the same code interface. Every module has exactly one functionality,
+making it easy to interchange modules and place them in any order. For
+example, we can have the routing module on either the client side or
+the server side. Functional separation at the module level also allows
+us to easily mock these modules for testing purposes. For example,
+mocked storage engine backed by hash map for unit tests. 
 
-Most of our modules have been motivated from the original Dynamo paper. Starting from the top our client has a simple $get$ and $put$ API. Every tuple is replicated for availability, with each value being versioned with a vector clock~\cite{lamport}. Conflicts during updates for read-write stores are resolved at the application level by the next module. This resolution problem does not apply for read-only stores since \projectname{} updates all the replicas of a key in a store at once, keeping them in sync. Similarly the `repair mechanism' layer, consisting of hinted handoff and read repair, is used only by read-write stores to bring the data back to a consistent state. 
+Most of our modules have been motivated from the original Dynamo
+paper. Starting from the top our client has a simple $get$ and $put$
+API. Every tuple is replicated for availability, with each value being
+versioned with a vector clock~\cite{lamport}. Conflicts during updates
+for read-write stores are resolved at the application level by the
+next module. This resolution problem does not apply for read-only
+stores since \projectname{} updates all the replicas of a key in a
+store at once, keeping them in sync. Similarly the ``repair
+mechanism'' layer, consisting of hinted handoff and read repair, is
+used only by read-write stores to bring the data back to a consistent
+state. 
 
-The `routing' module deals with partitioning as well as replication. Our partitioning scheme is similar to Dynamo's, where-in \projectname{} splits the hash ring into equal size `partitions' and then assigns them to nodes. This ring is then shared with all the stores, i.e. changes in the mapping require changes to all the stores. Now to generate the `preference list' (list of node ids where the replicas will be stored), we first hash the key to a range belonging to a partition and then continue jumping the ring clockwise to find $N$-1 other partitions belonging to different nodes. 
+The ``routing'' module deals with partitioning as well as replication.
+Our partitioning scheme is similar to Dynamo's, where-in
+\projectname{} splits the hash ring into equal size partitions and
+then assigns them to nodes. This ring is then shared with all the
+stores, i.e. changes in the mapping require changes to all the stores.
+Now to generate the ``preference list'' (list of node ids where the
+replicas will be stored), we first hash the key to a range belonging
+to a partition and then continue jumping the ring clockwise to find
+$N{-}1$~other partitions belonging to different nodes. 
 
-The last module, i.e. the pluggable storage layer, has the same $get$ and $put$ functions, along with the ability to stream data out. Being able to iterate over all tuples in a store has proved to be very helpful during debugging of data. Besides running the above stack, every node also runs a service which allows the execution of following administrative commands - add / delete store, stream data out and trigger read-only store operations. 
+The last module, the pluggable storage layer, has the same \emph{get}
+and \emph{put} functions, along with the ability to stream data out.
+Being able to iterate over all tuples in a store has proved to be very
+helpful during debugging of data. Besides running the above stack,
+every node also runs a service that allows the execution of following
+administrative commands: add or removal of a store, stream data out,
+and trigger read-only store operations. 
 
 \begin{figure}
   \centering
@@ -39,9 +91,21 @@ The last module, i.e. the pluggable storage layer, has the same $get$ and $put$ 
   \label{fullstack}
 \end{figure}
 
-
 \noindent 
-Now that we know the individual components, let us look at how \projectname{} is being used inside the complete \linkedin{} stack. As shown in Figure~\ref{fullstack} \projectname{} supports two routing modes --- server side and client side routing. Client side routing requires an initial `bootstrap' step where-in it retrieves the metadata required for routing (cluster topology and store definitions metadata) by load balancing to a random node. Once the metadata has been retrieved the client gets the benefit of doing one less hop compared to server side routing since it knows exactly where the replicas for a key are. This is beneficial from a latency as well as throughput perspective since there are less number of services acting as bottlenecks. The disadvantage of client side routing is that it makes the client side code-base large because of the extra routing and replication logic. Also, as we'll further explain in Section~\S\ref{sec:read_only:data_cycle:rebalancing}, it also makes rebalancing of data complicated since the \projectname{} nodes now need a mechanism to update the cluster topology metadata on the live clients. 
+As shown in Figure~\ref{fullstack}, \projectname{} supports two
+routing modes: server side and client side routing. Client side
+routing requires an initial ``bootstrap'' step wherein it retrieves
+the metadata required for routing (cluster topology and store
+definitions metadata) by load balancing to a random node. Once the
+metadata has been retrieved the client, one less hop is necessary
+compared to server side routing since the replica locations are known.
+This benefits latency and throughput as there are fewer services
+acting as bottlenecks, but complicates the client with extra routing
+and replication logic. Also, as we'll further explain in
+Section~\S\ref{sec:read_only:data_cycle:rebalancing}, it also makes
+rebalancing of data complicated since the \projectname{} nodes now
+need a mechanism to update the cluster topology metadata on the live
+clients. 
 
 
 % ========================== READ-ONLY-STORAGE ENGINE  ==========================================
@@ -49,11 +113,11 @@ Now that we know the individual components, let us look at how \projectname{} is
 \section{Read-only extensions}
 \label{sec:read_only}
 
-Before we started writing our own custom storage engine we decided to
-evaluate currently available storage engines, MySQL and BDB, to see 
-if they could fit our bulk loading use-case. Our criteria for success 
-was the ability to bulk load data as fast as possible with minimum 
-disk space overhead while still serving live traffic.
+Before we started writing our own custom storage engine, we decided to
+evaluate currently available storage engines, MySQL and BDB, to see if
+they could fit our bulk loading use-case. Our criteria for success was
+the ability to bulk load data as fast as possible with minimum disk
+space overhead while still serving live traffic.
  
 We started by evaluating the various storage engines provided by
 MySQL. The na\"ive approach of multiple insert statements is
@@ -76,45 +140,44 @@ latency due to pressure on shared CPU and memory resources.
 
 We next tried completely offloading the index construction to another
 system as building the index on the serving system has isolation
-problems. To do so, we leveraged the fact that MyISAM allows copying 
-of database files from another node into a live database directory; 
-thereby automatically making it available for serving. 
-We built a separate cluster where-in we would bulk load and then eventually 
-copy the data over to the live cluster, but this requires an extra 
-maintenance cost of a separate MySQL cluster with exactly the same number 
-of nodes as the live one. Further, the lack of ability to load compressed 
-data directly makes this process more time consuming, as the data is copied 
-multiple times between nodes: once as a flat file to the bulk load cluster, 
-then the internal copy during the \sql{LOAD} statement, and finally the 
-raw data copy to the actual live database. 
+problems. To do so, we leveraged the fact that MyISAM allows copying
+of database files from another node into a live database directory;
+thereby automatically making it available for serving. We built a
+separate cluster where-in we would bulk load and then eventually copy
+the data over to the live cluster, but this requires an extra
+maintenance cost of a separate MySQL cluster with exactly the same
+number of nodes as the live one. Further, the lack of ability to load
+compressed data directly makes this process more time consuming, as
+the data is copied multiple times between nodes: once as a flat file
+to the bulk load cluster, then the internal copy during the \sql{LOAD}
+statement, and finally the raw data copy to the actual live database. 
 
 The previous solution is not ideal due to its dependency on the
 redundant MySQL servers, which makes the complete process prone to
 failure downtimes. Instead, what if we could use the inherent fault
-tolerance and parallelism of Hadoop and build individual node /
-partition level data stores which could be pulled over by
-\projectname{} for serving? The large-scale adoption of HDFS~\cite{hdfs}
- as the data sink for ETL scenarios makes it an ideal location to 
-act as our source of data.
-So the next attempted approach was to use Hadoop and a good single
-node high performance storage engine to generate smaller data
-stores in parallel. That is, a Hadoop job reads data from a source in
-HDFS, re-partitions on a per node basis, and finally writes the data
-to individual stores (for example, BDB) on the local filesystem in the
-reducer phase. The number of reducers were equal to the number of
-nodes, but could have easily been further split on a per partition
-basis. This data is then read from the local filesystem and copied
-onto HDFS from where it can be read by \projectname{}. The benefits of
-this approach is that it leverages Hadoop's fault tolerance to build
-the indexes offline, but it suffers from an extra copy from the local
-file system the reducer nodes to HDFS---which can become a real
-bottleneck with terabytes of data. 
+tolerance and parallelism of Hadoop and build individual
+node/partition level data stores which could be pulled over by
+\projectname{} for serving? The large-scale adoption of
+HDFS~\cite{hdfs} as the data sink for ETL scenarios makes it an ideal
+location to act as our source of data. The next attempted approach was
+to use Hadoop and a good single node high performance storage engine
+to generate smaller data stores in parallel. That is, a Hadoop job
+reads data from a source in HDFS, re-partitions on a per node basis,
+and finally writes the data to individual stores (for example, BDB) on
+the local filesystem in the reducer phase. The number of reducers were
+equal to the number of nodes, but could have easily been further split
+on a per partition basis. This data is then read from the local
+filesystem and copied onto HDFS from where it can be read by
+\projectname{}. The benefits of this approach is that it leverages
+Hadoop's fault tolerance to build the indexes offline, but it suffers
+from an extra copy from the local file system the reducer nodes to
+HDFS---which can become a real bottleneck with terabytes of data. 
 
 From the above experiments we came to the conclusion that we required
 our own custom storage engine. Our new custom storage engine, along
 with its complete pipeline, should have the following properties. 
 \begin{compactitem}
-\item \emph{No performance impact on live requests}. The incoming
+\item \emph{Little performance impact on live requests}. The incoming
 requests to the live store must not be impacted during the data load.
 There is a tradeoff between modifying the current index on the live
 server and finishing the bulk load as fast as possible, but that can
