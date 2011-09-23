@@ -3,9 +3,9 @@
 
 Our evaluation answers the following questions:
 \begin{compactenum}
-\item Can the system rapidly deploy new data-sets?
-\item What is the read latency, and how does it scale?
-\item What is impact on live serving during the load?
+\item Can the system rapidly deploy new data-sets? 
+\item What is the read latency, and does it scale with data size and nodes? 
+Also what is the impact on it during a deployment?
 \end{compactenum}
 
 We use a simulated data-set as well as production data for two
@@ -46,24 +46,6 @@ Figure~\ref{distribution} shows the value size distribution for CF.
 is due to the cap on the number of recommendations we provide.}
   \label{distribution}
 \end{figure}
-
-\begin{table}
-\begin{center}
-	\begin{tabular} { | l | l | }
-	\hline
-	Total data size per node &	940 GB			\\ 
-	Current active data to memory ratio &	11.7:1		\\
-	\hline
-	Total number of stores &	110 	\\
-	Max store size  &		320 GB	\\
-	Min store size &		46 KB	\\
-	Max number of store swaps per day & 66	\\
-	\hline
-	\end{tabular}
-\end{center}
-	\caption{Statitics of our largest read-only cluster at \linkedin{}}
- 	\label{tab:production_statistics}
-\end{table}
 
 \subsection{Build times}
 
@@ -186,7 +168,7 @@ the amount of queries per second while maintaining the median latency.
 
 To test whether the system scales well with the number of nodes, we
 present read latency numbers for the same random data-set but spread
-over 16~machines. The data was fetched by \projectname{} at a steady
+over 16~machines and $N$=1. The data was fetched by \projectname{} at a steady
 rate bound by the network; we saturated the 1~Gbit line between HDFS
 and \projectname{} nodes. The read tests were run for both uniform as well as
 zipfian distribution using YCSB~\cite{ycsb}, an open-source framework 
@@ -208,10 +190,13 @@ the uniform distribution.
   \label{16search}
 \end{figure}
 
-Finally, Figure~\ref{production} shows the PYMK and CF read latencies
-in our production cluster. The figure shows the average latency across
-all server nodes before and after a data swap. CF has a higher
-latency primarily because of the larger data size than that of PYMK.
+Finally, Table~\ref{tab:production_statistics} shows some of the statistics 
+for our largest cluster. Figure~\ref{production} shows the PYMK and CF average
+read latencies, over a 5 minute sliding window, on a node from this cluster. Both
+the stores use $N$=2 and $R$=1. In particular we highlight the latency difference 
+before and after a data swap. Our corresponding client side latency has the same
+trend along with the extra network overhead. CF has a higher latency than that of 
+PYMK primarily because of the larger data size.
 
 \begin{figure*}
   \centering
@@ -220,4 +205,23 @@ latency primarily because of the larger data size than that of PYMK.
   \caption{5 minutes sliding average read latency across all server nodes on our largest cluster over time. The new data-set is swapped in around the 20 minute mark for both graphs}
   \label{production}
 \end{figure*}
+
+\begin{table}
+\begin{center}
+	\begin{tabular} { | l | l | }
+	\hline
+	Total data size per node &	940 GB			\\ 
+	Current active data to memory ratio &	11.7:1		\\
+	\hline
+	Total number of stores &	110 	\\
+	Max store size  &		320 GB	\\
+	Min store size &		46 KB	\\
+	Max number of store swaps per day & 66	\\
+	\hline
+	\end{tabular}
+\end{center}
+	\caption{Statitics of our largest read-only cluster at \linkedin{}}
+ 	\label{tab:production_statistics}
+\end{table}
+
 
