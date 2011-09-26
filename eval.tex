@@ -5,7 +5,7 @@ Our evaluation answers the following questions:
 \begin{compactenum}
 \item Can the system rapidly deploy new data-sets? 
 \item What is the read latency, and does it scale with data size and nodes? 
-Also what is the impact on it during a deployment?
+Also what is the impact on it during a new data deployment?
 \end{compactenum}
 
 We use a simulated data-set as well as production data for two
@@ -143,7 +143,7 @@ other hand, performs an average of only 1~lookup. While this results
 in an initial low read latency, it comes at the expense that much of the 
 index is uncached in the long run. Our production systems are currently 
 running binary search due to this faster cache warming process. All numbers 
-presented henceforth for read-only storage engine after this use binary search.  
+presented henceforth for read-only storage engine use binary search.  
 
 \begin{figure}
   \centering

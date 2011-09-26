@@ -4,22 +4,22 @@
 Many social networking, e-commerce, and web properties contain
 data-derived products, which usually consist of some data mining
 application exposing insights to the user. Typical products include:
-``People You May Know,'' a link prediction system attempting to find
+``People You May Know,'' a link prediction product attempting to find
 others one might know on the social
 network~(c.f.~Figure~\ref{fig:pymk}); collaborative filtering, which
 showcases relationships between pairs of items based on the wisdom of
 the crowd~(c.f.~Figure~\ref{fig:browsemaps}); entity
 recommendations; and more. \linkedin\footnote{Anonymized name} is a
-social network with more than 120~million members consisting of
+social network with more than \members{}~million members consisting of
 these and twenty other data-derived products. 
 
 The commoditization of batch computing infrastructure like Hadoop~\cite{hadoop}
  and the rise of machine learning at Internet companies leads to complex
 algorithms that run over large data sets as a core production use
 case. The challenge with these products is that they must surface
-hundreds of results for each of our 120~million members using
+hundreds of results for each of our \members{}~million members using
 expensive link prediction or nearest-neighbor algorithms. For example,
-the ``People You May Know'' system churns on more than 100~TB of data
+the ``People You May Know'' algorithm churns on more than 100~TB of offline data
 daily to make its predictions.
 
 Importantly, due to the dynamic nature of the social graph, this
@@ -32,7 +32,7 @@ of three phases: data collection, processing and finally serving. The
 data collection phase usually involves log ingestion, while the
 processing phase is a distributed parallel computing infrastructure.
 Interestingly, the nature of this cycle means live updates are not
-necessary and nevertheless are difficult to handle, and that a batch
+necessary and are difficult to handle, and that a batch
 update should complete quickly to engender frequent pushes.
  
 \begin{figure}

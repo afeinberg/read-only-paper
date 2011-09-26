@@ -9,7 +9,7 @@ one store or multiple stores. For example, a feature dealing with
 group recommendation will map to two stores: one recording member id
 to recommended group ids and second recording a group id to their
 corresponding description. Every store has the following list of
-configurable parameters, which are identical to Dynamo's parameters. 
+configurable parameters, which are identical to Dynamo's\cite{dynamo} parameters. 
 \begin{compactitem}
   \item \emph {Replication factor} ($N$) - Number of nodes onto which
 each key-value tuple is replicated
@@ -44,7 +44,7 @@ the same code interface. Every module has exactly one functionality,
 making it easy to interchange modules and place them in any order. For
 example, we can have the routing module on either the client side or
 the server side. Functional separation at the module level also allows
-us to easily mock these modules for testing purposes. For example,
+us to easily mock these modules for testing purposes---for example,
 mocked storage engine backed by hash map for unit tests. 
 
 Most of our modules have been motivated from the original Dynamo
@@ -60,12 +60,12 @@ used only by read-write stores to bring the data back to a consistent
 state. 
 
 The ``routing'' module deals with partitioning as well as replication.
-Our partitioning scheme is similar to Dynamo's, where-in
+Our partitioning scheme is similar to Dynamo's, wherein
 \projectname{} splits the hash ring into equal size partitions and
 then assigns them to nodes. This ring is then shared with all the
 stores, i.e. changes in the mapping require changes to all the stores.
 Now to generate the ``preference list'' (list of node ids where the
-replicas will be stored), we first hash the key to a range belonging
+replicas will be stored), we first hash the key (using MD5) to a range belonging
 to a partition and then continue jumping the ring clockwise to find
 $N{-}1$~other partitions belonging to different nodes. 
 
@@ -73,8 +73,8 @@ The last module, the pluggable storage layer, has the same \emph{get}
 and \emph{put} functions, along with the ability to stream data out.
 Being able to iterate over all tuples in a store has proved to be very
 helpful during debugging of data. Besides running the above stack,
-every node also runs a service that allows the execution of following
-administrative commands: add or removal of a store, stream data out,
+every node also runs an administrative service that allows the execution 
+of following privileged commands: add or removal of a store, stream data out,
 and trigger read-only store operations. 
 
 \begin{figure}
@@ -113,6 +113,7 @@ clients.
 \section{Read-only extensions}
 \label{sec:read_only}
 
+\subsection{Motivation}
 Before we started writing our own custom storage engine, we decided to
 evaluate currently available storage engines, MySQL and BDB, to see if
 they could fit our bulk loading use-case. Our criteria for success was
@@ -232,7 +233,7 @@ performance benefit by maintaining our own structure is for elements
 already in the page cache. In fact, this custom structure may even 
 start taking memory away from the page cache. Rather, this motivated 
 the need of our storage engine to exploit the page cache instead of 
-maintaining our own complex data structure. Since our data is immutable, 
+maintaining our own complex heap-based data structure. Since our data is immutable, 
 \projectname{} memory maps the entire index into the address space. 
 Further, since \projectname{} has been written in Java and runs on 
 the JVM, delegating the memory management to the operating system 
@@ -249,10 +250,11 @@ To take advantage of the parallelism in Hadoop, we split the data,
 destined for a particular node, into multiple chunk buckets, 
 which in turn are split into multiple chunk files. Generation of 
 multiple chunks file can hence be done independently and in parallel. 
-A chunk bucket is defined by the primary partition id and replica type,
-thereby giving it a unique identifier across all nodes. For example the key in 
-Figure~\ref{hash} would fall into buckets~11\_0 (on node~2) and 
-11\_1 (on node~0). Table~\ref{tab:node_to_chunk} summarizes the
+A chunk bucket is defined by the primary partition id and replica id 
+thereby giving it a unique identifier across all nodes. A replica id,
+for a store with $N$=2, would be either 0 for primary replica or 1 for 
+secondary replica. For example the key in Figure~\ref{hash} would fall 
+into buckets~11\_0 (on node~2) and 11\_1 (on node~0). Table~\ref{tab:node_to_chunk} summarizes the
 various chunk buckets for a store with replication factor 2 and cluster
 topology as defined in Figure~\ref{hash}. Our initial design 
 had started with the simpler scheme of having one bucket per node 
@@ -281,7 +283,7 @@ engine's data and index files.
 \hline
     \end{tabular}
 \end{center}
- 	\caption{Every \projectname{} node is responsible for chunk buckets based on the partitions and replica type. This table shows the node id to chunk bucket mapping for the cluster topology defined in Figure~\ref{hash}}
+ 	\caption{Every \projectname{} node is responsible for chunk buckets based on the primary partition and replica id. This table shows the node id to chunk bucket mapping for the cluster topology defined in Figure~\ref{hash}}
  	\label{tab:node_to_chunk}
 \end{table}
 
@@ -291,7 +293,10 @@ corresponding value in the data file. This simple sorted structure
 allows us to easily leverage Hadoop's ability to return sorted data
 in the reducers. Further, preliminary tests also showed that the
 index files were generally order of magnitude smaller than the data
-files and hence, could safely fit into the page cache.
+files and hence, could safely fit into the page cache. The use of
+MD5, instead of any other hash function giving uniformly distributed
+values, was only to re-use the same calculation done for the generation
+of the preference list. 
 
 An interesting optimization is that the full 16 bytes of the MD5 of
 the key is not necessary. We had initially started by using the full
@@ -384,17 +389,19 @@ Figure~\ref{fig:mapreduce-chunk-generation}.
 {\bf Function}: MD5(x): Returns MD5 of x\;
 {\bf Function}: PreferenceList(x): Partition list for key x\;
 {\bf Function}: Size(x): Return size in bytes\;
+{\bf Function}: Make*(x): Convert x to Spock serialization\;
 
 \BlankLine
 \BlankLine
 \KwIn{K: raw key}
 \KwIn{V: raw value}
 \Map{
-	K' $\leftarrow$ MakeKey(K,V)\;
-	V' $\leftarrow$ MakeValue(K,V)\;
+	K' $\leftarrow$ MakeKey(K)\;
+	V' $\leftarrow$ MakeValue(V)\;
 	Replica Id $\leftarrow$ 0\;
-	KOut $\leftarrow$ TopBytes(MD5(K'),8)\;
-	\ForEach{Partition Id $\in$ PreferenceList(MD5(K'))}{
+	MD5K' $\leftarrow$ MD5(K')
+	KOut $\leftarrow$ TopBytes(MD5K',8)\;
+	\ForEach{Partition Id $\in$ PreferenceList(MD5K')}{
 		Node Id $\leftarrow$ PartitionToNode(Partition Id)\;
 		emit(KOut, [Node Id, Partition Id, Replica Id, K', V'])\;
 		Replica Id $\leftarrow$ Replica Id + 1\;
@@ -553,12 +560,12 @@ the new data-set with the older version. Finally after the fetch is
 complete, the driver triggers a swap operation on all nodes, which is
 co-ordinated via a read-write lock in the storage engine. Each node
 closes its current set of chunks, open its new set of chunks, and
-memory maps the new index. On a single node, this complete 
-operation takes around 0.012 ms on average with the worst swap time of 
-around 0.050 ms. This is because no data reads are required for the 
-swap. To provide global atomic semantics, the driver ensures that 
-all the nodes have successfully swapped their data; rolling back if 
-any swaps have failed.
+memory maps the new index. On our largest cluster, described in Table~\ref{tab:production_statistics}, 
+this complete operation takes around 0.012 ms on average with the worst 
+swap time of around 0.050 ms. This is because no data reads are required 
+for the swap. Also to provide global atomic semantics, the driver does
+some form of two-phase commit, ensuring that all the nodes have successfully 
+swapped their data and rolling back if any swaps have failed.
 
 % ========================== READ-ONLY-STORAGE ENGINE  - COMPLETE DATA CYCLE - SCHEMA CHANGE ==========================================
 
@@ -597,8 +604,8 @@ incrementally add capacity to the cluster indepedent of the data pushes.
 The rebalancing feature allows us to add new nodes to a live cluster without 
 downtime. This feature was initially written for the read-write stores 
 but easily fits into the read-only cycle due to the static nature 
-of the data. Our smallest unit of rebalancing is a partition. In 
-other words, addition of a new node translates to giving the ownership 
+and fine-grained replication of the data. Our smallest unit of rebalancing 
+is a partition. In other words, addition of a new node translates to giving the ownership 
 of some partitions to it. The rebalancing process is run by a tool that 
 co-ordinates the full process. The following are the steps that
 are followed during the addition of a new node. 
