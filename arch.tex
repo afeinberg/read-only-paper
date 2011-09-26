@@ -371,15 +371,11 @@ previous version folder and swapping the data in.
 \subsection{Chunk generation}
 \label{sec:read_only:chunk_generation}
 
-Construction of the chunk files for all \projectname{} nodes is a
-single MapReduce job; the pseudo-code representation is shown in
-Figure~\ref{fig:mapreduce-chunk-generation}.
-
 \begin{algorithm}[!t]
 \scriptsize
 \DontPrintSemicolon
 \SetKwBlock{Map}{map(K,V)}{end}
-\SetKwBlock{Partitioner}{partition(K,V): int}{end}
+\SetKwBlock{Partitioner}{partition(K,V): Integer}{end}
 \SetKwBlock{Reducer}{reduce(K,Iterator$<$V$>$ Iterator)}{end}
 
 {\bf Global Input}: Num Chunks: Number of chunks per bucket\;
@@ -412,7 +408,7 @@ Figure~\ref{fig:mapreduce-chunk-generation}.
 \KwIn{K: Top 8 bytes of MD5 of Spock key}
 \KwIn{V: [Node Id, Partition Id, Replica Id, Spock key, Spock value]}
 \Partitioner{
-	Chunk Id $\leftarrow$ TopBytes(MD5(K'),Size(int)) \% Num Chunks\;
+	Chunk Id $\leftarrow$ TopBytes(MD5(K'),Size(Integer)) \% Num Chunks\;
 	Bucket Id $\leftarrow$ V.Partition Id * Replication Factor + V.Replica Id\;
 	\Return{Bucket Id * Num Chunks + Chunk Id}
 }
@@ -431,7 +427,7 @@ Figure~\ref{fig:mapreduce-chunk-generation}.
 		WriteDataFile(Size(V.V'))\;
 		WriteDataFile(V.K')\;
 		WriteDataFile(V.V')\;
-		Position += Size(V.K')+Size(V.V')+Size(2*Int)
+		Position += Size(V.K')+Size(V.V')+Size(2*Integer)
 	}
 }
 \BlankLine
@@ -439,24 +435,26 @@ Figure~\ref{fig:mapreduce-chunk-generation}.
 \label{fig:mapreduce-chunk-generation}
 \end{algorithm}
 
-The Hadoop job consists of a simple MapReduce job which takes as its
-input the number of chunk files per chunk buckets, cluster topology, 
-store definition and the input data location on HDFS and then 
-takes care of replication and partitioning, finally emitting the 
-data into separate node based folders. 
+Construction of the chunk files for all \projectname{} nodes is a
+single Hadoop job; the pseudo-code representation is shown in
+Figure~\ref{fig:mapreduce-chunk-generation}. The Hadoop job 
+takes as its input the number of chunk files per 
+chunk buckets, cluster topology, store definition and the input data 
+location on HDFS and then takes care of replication and 
+partitioning, finally emitting the data into separate node based folders. 
 
-This is achieved by partitioning the data depending on the routing
-strategy in the mapper phase; redirecting the key to the correct reducer 
-in the partitioner phase and finally writing the data to a single
-chunk (i.e. a data and index file) in the correct node folder in the
-reducer phase. Due to Hadoop's generic \term{InputFormat} mechanics, any source data
-can be converted to \projectname{}'s serialization format. The mapper
+At a high level, mapper phase deals with the partitioning of the data depending on the routing
+strategy; partitioner phase redirects the key to the correct reducer 
+and finally reducer phase deals with writing the data to a single
+chunk (i.e. a data and index file). Due to Hadoop's generic 
+\term{InputFormat} mechanics, any source data can be converted to 
+\projectname{}'s serialization format. The mapper
 phase emits the upper 8~bytes of MD5 of the \projectname{} key
 $N$~times as the map phase key with the map phase value equal to a
 grouped tuple of node id, partition id, replica id and the raw
 \projectname{} key and value. 
 
-The custom partitioner then generates the chunk id within a chunk
+The custom partitioner generates the chunk id within a chunk
 bucket from this key. Since there is a fixed number of chunks on a 
 per partition-replica basis, the chunk id is generated with a 
 simple mod of the number of chunk files per chunk bucket. 
@@ -466,7 +464,7 @@ the chunk id to route the key to the correct reducer.
 Finally, every reducer is responsible for a single chunk, 
 meaning that by having more chunks, once can increase
 the parallelism during the build phase. Since Hadoop automatically
-sorts the data based on the key, the process receives data in the
+sorts the data based on the key in a reducer, the phase receives data in the
 order necessary for the index file and can a simple append 
 to the index and data file on HDFS with no extra processing required.
 The data layout on HDFS is a directory on a per \projectname{} node
