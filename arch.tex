@@ -17,7 +17,7 @@ each key-value tuple is replicated
 reads from in parallel during a $get$ before declaring a success
   \item \emph {Required writes} ($W$) - Number of node responses
 \projectname{} blocks for before declaring success during a $put$
-  \item \emph {Key/Value serializer and compression} - \projectname{}
+  \item \emph {Key/Value serialization and compression} - \projectname{}
 can have different serialization schema for key and value. For the
 custom batch data use-case, \projectname{} uses a custom binary JSON
 format. \projectname{} also supports per-tuple based compression. The
@@ -34,7 +34,7 @@ this paper.
 \begin{figure}
   \centering
     \includegraphics[scale=0.55]{images/arch.pdf}
-  \caption{\projectname{} architecture containing pluggable and interchangable modules for a single client and server}
+  \caption{\projectname{} architecture containing pluggable and interchangeable modules for a single client and server}
   \label{arch}
 \end{figure}
 
@@ -49,8 +49,8 @@ mocked storage engine backed by hash map for unit tests.
 
 Most of our modules have been motivated from the original Dynamo
 paper. Starting from the top our client has a simple $get$ and $put$
-API. Every tuple is replicated for availability, with each value being
-versioned with a vector clock~\cite{lamport}. Conflicts during updates
+API. Every tuple is replicated for availability, with each value having
+vector clock~\cite{lamport} versioning. Conflicts during updates
 for read-write stores are resolved at the application level by the
 next module. This resolution problem does not apply for read-only
 stores since \projectname{} updates all the replicas of a key in a
@@ -195,7 +195,7 @@ their already existing support for expansion without downtime.
 \item \emph{Rollback}. The general trend we notice in our business
 that data is treated more like code: incorrect or incomplete data
 could have been due to algorithm changes or source data problems. 
-In such scnearios running a long batch load job to re-populate new
+In such scenarios running a long batch load job to re-populate new
 correct data is not acceptable. So to minimize the time in error, 
 our storage engine must support very fast rollback to the previous 
 good state.
@@ -214,7 +214,7 @@ well under large ratios of data to RAM ratio.
 \end{compactitem}
 
 Our data deployment pipeline consists of a new storage engine that
-is built in Hadoop (\S\ref{sec:read_only:storage_format}), versioned
+is built in Hadoop (\S\ref{sec:read_only:storage_format}), assigned versions
 for rollback (\S\ref{sec:read_only:versioning}), and deployed. We
 finally conclude by explaining how it fits into the complete data 
 cycle along with some real world production scenarios and
@@ -337,7 +337,7 @@ files.
 The data file is similarly a very highly packed structure where we
 store the number of collided tuples followed by a set of collided
 \emph{(key size, value size, key, value)} list. The important thing to
-remember here is that we store the raw key bytes instead of the MD5-ed
+remember here is that we store the raw key bytes instead of the MD5 of the
 key bytes in order to do a comparison during reads. 
 
 % ========================== READ-ONLY-STORAGE ENGINE  - VERSIONING ==========================================
@@ -486,10 +486,10 @@ reaches a particular node.
   \item Calculate the MD5 of the key
   \item Generate the (i) primary partition id (ii) replica id (the replica being
 searched when querying this node) and (iii) chunk id (the first 4 bytes of
-the MD5-ed key modulo the number of chunks in a bucket)
+MD5 of the key modulo the number of chunks in a bucket)
   \item From the store's folder, find the corresponding chunk file 
 (data and index) with the above 3 variables.
-  \item Perform a binary search using the top 8~bytes of the MD5-ed
+  \item Perform a binary search using the top 8~bytes of MD5 of the
 key as the search key in the index file. This is easy, as there are
 fixed space requirements for every key (12 bytes: 8 bytes for key and
 4 bytes for offset), thereby not requiring any internal pointers

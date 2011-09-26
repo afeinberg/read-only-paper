@@ -24,8 +24,8 @@ prepare the system for incoming workload. An extension of that
 work~\citet{pnutsbatch} uses Hadoop to batch insert data into PNUTS in
 the reduce phase. Both of these approaches optimize the time for data
 loading into the live system, but incur latency degradation on live
-serving due to multitenant issues with sharing CPU and memory during
-the full loading process. This is a signifcant problem with very large
+serving due to multi-tenant issues with sharing CPU and memory during
+the full loading process. This is a significant problem with very large
 data-sets, which even after optimizations, may take hours to load.  
 
 \projectname{} can alleviate this problem by offloading the
@@ -38,7 +38,7 @@ on completion pull the indices to serve search requests.
 This approach has also been extended to various databases.
 \citet{konstantinou} and \citet{barbuzzi} suggest building HFiles
 offline in Hadoop, then shipping them to HBase~\cite{hbase}, an
-open-source database modelled after BigTable~\cite{bigtable}. These
+open-source database modeled after BigTable~\cite{bigtable}. These
 works do not explore the data pipeline, particularly data refreshes
 and rollback. More importantly, since the data itself is immutable,
 \projectname{} makes optimizations at the storage layer level.

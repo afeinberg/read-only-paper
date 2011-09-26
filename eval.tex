@@ -122,7 +122,7 @@ snapshot of member activity for one high traffic day.
 We first try to measure how fast the index can get paged into the OS's
 page cache. We ran tests on a 100~GB random data-set on a single node
 and report the median latency after swap for a continuous stream of 
-uniformally distributed requests. For MySQL, we created a view 
+uniformly distributed requests. For MySQL, we created a view 
 on an existing table, bulk loaded into a new table and swapped the view 
 to the new table without stopping the requests. Similarly for our 
 storage engine we used the complete data-pipeline, described in Section
@@ -141,7 +141,7 @@ is steeper. This is because binary search did an average of 8~lookups
 thereby touching more parts of the index; interpolation search, on the 
 other hand, performs an average of only 1~lookup. While this results 
 in an initial low read latency, it comes at the expense that much of the 
-index is uncached in the long run. Our production systems are currently 
+index is un-cached in the long run. Our production systems are currently 
 running binary search due to this faster cache warming process. All numbers 
 presented henceforth for read-only storage engine use binary search.  
 
@@ -173,13 +173,13 @@ rate bound by the network; we saturated the 1~Gbit line between HDFS
 and \projectname{} nodes. The read tests were run for both uniform as well as
 zipfian distribution using YCSB~\cite{ycsb}, an open-source framework 
 for benchmarking cloud data serving systems, with number of clients fixed
-at 100 threads. The Zipfian distribution ensures that the hot elements are 
+at 100 threads. The zipfian distribution ensures that the hot elements are 
 queried together since that simulates the general site visiting patterns 
 of most websites~\cite{zipf}. We also observed that the separate node
 running the client was never a bottleneck since most of the time was
 spent in retrieving the data.
 Figure~\ref{16search} shows the overall client side median latency while varying 
-the data-set sizes. The hotness of a few keys naturally aids cachability, 
+the data-set sizes. The hotness of a few keys naturally aids cacheability, 
 thereby exhibiting an overall lower latency for zipfian compared to 
 the uniform distribution. 
 
@@ -220,7 +220,7 @@ PYMK primarily because of the larger data size.
 	\hline
 	\end{tabular}
 \end{center}
-	\caption{Statitics of our largest read-only cluster at \linkedin{}}
+	\caption{Statistics of our largest read-only cluster at \linkedin{}}
  	\label{tab:production_statistics}
 \end{table}
 

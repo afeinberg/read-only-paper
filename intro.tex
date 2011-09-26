@@ -61,25 +61,23 @@ batch-oriented use cases. At \linkedin, this system has been running
 for over 2~years with our largest cluster loading around 3~TB of new
 data to the site every day. 
 
-As part of this lifecycle, we have access to an elastic pool of batch
+As part of this cycle, we have access to an elastic pool of batch
 computing infrastructure with little to no latency requirements, which
-\projectname{} leverages to build its index and data files in Hadoop
-to support a high throughput for batch refreshes. The system provides
-excellent live serving performance: our evaluation, and the results we
-see in production, show that the system yields sub-5~ms median read
-latency---even during data refreshes. 
+\projectname{} leverages to build its index and data files in Hadoop,
+thereby supporting high throughput for batch refreshes. The \projectname{} 
+infrastructure then provides excellent live serving performance for 
+this batch output--even during data refreshes. 
 
-\projectname{} supports instantaneous rollback, where data can be
+\projectname{} also supports instantaneous rollback, where data can be
 restored to a clean copy minimizing the time in error, which helps
 support fast, iterative development, especially necessary for new
-feature improvements. The system also provides the ability to grow
-horizontally with its ability to rebalance existing data to new nodes
-without down-time. 
+feature improvements. Finally, its data layout provides the ability to grow
+horizontally by rebalancing existing data to new nodes without down-time. 
 
 The key contributions of this work are:
 \begin{compactitem}
 \item A scalable offline index construction, based on 
-MapReduce, which produces partitioned data for online consumption
+MapReduce~\cite{dean}, which produces partitioned data for online consumption
 \item Complete data cycle to refresh TBs of data with minimum effect on
 existing serving latency
 \item Custom storage format, for static data, which leverages the 
