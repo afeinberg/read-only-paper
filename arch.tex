@@ -313,11 +313,11 @@ uniform distribution of range $[1, x]$, the probability that at least
 \begin{equation}
 1 - e^{\frac{-n(n-1)}{2x}}
 \end{equation}
-Mapping this to our scenario, $n$ is generally our 120 million member
-user base, while the initial value of $x$ is $2^{128} - 1$ (16 bytes
-of MD5). The probability of collision in this scenario was close to 0.
-A key-space of 4 bytes (i.e. 32 bits) yields an extremely high
-collision probability of:
+Mapping this to our common scenario of stores keyed by member id, $n$ 
+is our 120 million member user base, while the initial value of 
+$x$ is $2^{128} - 1$ (16 bytes of MD5). The probability of collision 
+in this scenario was close to 0. A key-space of 4 bytes (i.e. 32 bits) 
+yields an extremely high collision probability of:
 \begin{equation}
 1 - e^{\frac{(-120*10^{6} * (120*10^{6} - 1)}{2 * (2^{32} - 1)}} \sim 1
 \end{equation}
