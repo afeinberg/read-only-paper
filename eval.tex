@@ -8,6 +8,7 @@ Our evaluation answers the following questions:
 Also what is the impact on it during a new data deployment?
 \end{compactenum}
 
+\longpage
 We use a simulated data-set as well as production data for two
 user-facing features: ``People You May Know'' (PYMK,
 c.f.~Figure~\ref{fig:pymk}) and ``Viewers of this profile also
@@ -22,6 +23,7 @@ it only 4 GB JVM heap. Similarly since MyISAM uses a special key cache
 for index blocks and the page cache for data blocks, we chose the same
 4 GB for \emph{key\_buffer\_size}. We start by describing the data-sets in detail.
 
+\longpage
 \begin{compactitem}
 \item \emph{Random data-set}. The key is a long between
 0 and a varying number. The value is a fixed 1024 bytes size random
