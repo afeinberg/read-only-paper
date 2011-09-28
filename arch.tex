@@ -91,7 +91,6 @@ and trigger read-only store operations.
   \label{fullstack}
 \end{figure}
 
-\noindent 
 As shown in Figure~\ref{fullstack}, \projectname{} supports two
 routing modes: server side and client side routing. Client side
 routing requires an initial ``bootstrap'' step wherein it retrieves
@@ -106,7 +105,7 @@ Section~\S\ref{sec:read_only:data_cycle:rebalancing}, it also makes
 rebalancing of data complicated since the \projectname{} nodes now
 need a mechanism to update the cluster topology metadata on the live
 clients. 
-
+\longpage
 
 % ========================== READ-ONLY-STORAGE ENGINE  ==========================================
 
@@ -191,6 +190,7 @@ availability for our data. Finally \projectname{} is used as the
 serving layer, providing fault tolerance with tuple level replication. 
 All of these systems also easily scale horizontally due to
 their already existing support for expansion without downtime. 
+\longpage
 \item \emph{Rollback}. The general trend we notice in our business
 that data is treated more like code: incorrect or incomplete data
 could have been due to algorithm changes or source data problems. 
