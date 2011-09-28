@@ -173,16 +173,16 @@ present read latency numbers for the same random data-set but spread
 over 16~machines and $N$=1. The data was fetched by \projectname{} at a steady
 rate bound by the network; we saturated the 1~Gbit line between HDFS
 and \projectname{} nodes. The read tests were run for both uniform as well as
-zipfian distribution using YCSB~\cite{ycsb}, an open-source framework 
+Zipfian distribution using YCSB~\cite{ycsb}, an open-source framework 
 for benchmarking cloud data serving systems, with number of clients fixed
-at 100 threads. The zipfian distribution ensures that the hot elements are 
+at 100 threads. The Zipfian distribution ensures that the hot elements are 
 queried together since that simulates the general site visiting patterns 
 of most websites~\cite{zipf}. We also observed that the separate node
 running the client was never a bottleneck since most of the time was
 spent in retrieving the data.
 Figure~\ref{16search} shows the overall client side median latency while varying 
 the data-set sizes. The hotness of a few keys naturally aids cacheability, 
-thereby exhibiting an overall lower latency for zipfian compared to 
+thereby exhibiting an overall lower latency for Zipfian compared to 
 the uniform distribution. 
 
 \begin{figure}
