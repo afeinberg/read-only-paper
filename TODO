@@ -1,0 +1,194 @@
+* Star in front of section name indicates done...
+
+==> Fixable via writing ( Section numbers mentioned at start )
+1 - Reviewer thinks live updates are important. The reviewer felt most live
+updates problems can be solved by using log structured databases. This shows
+that we haven't really been able to correctly motivate the use-cases
+where-in bulk / atomic update is better than incremental update. The
+reviewer gives the example of storing friend list per member, in which case
+it would make sense to do updates on individual keys. We should try to
+highlight PYMK more and show that change in model, requires updating all
+keys every time- thereby making it infeasible to update individual tuples. -
+"Fixable via writing"
+1 - No mention of word "bulk load" - We should state the problems more
+explicitly - "Fixed via writing"
+2 - Cite and contrast the related work “Large-scale Incremental Processing
+Using Distributed Transactions and Notiﬁcations”, OSDI 2010, a study of
+pushing incremental updates to a large data set.- "Fixable via writing"
+3 - Technically "all" modules are not interchange-able. Most are...We should
+mention some examples ( routing ) - "Fixed via writing"
+3 - What is "hinted handoff" Please clarify what you mean by "hinted
+handoff".- "Fixed via writing"
+3 - Why spend time describing server side routing ( Figure 4 is useless )
+while the rest of paper talks about client side routing? - "Fixed via
+writing"
+3 - Clearly mention what is used in RW and what is in RO  - "Fixed via
+writing"
+3 - Is there a 1:1 correspondent between nodes and (physical) machines? Yes,
+they mean the same - "Fixable via writing"
+3 - Figure 3 is about replica placement but not clearly mentioned  -
+"Fixable via writing"
+3 - Routing can be explained better in Section 3. In particular he didn't
+understand difference between server side and client side routing - "Fixable
+via writing"
+3 - Feels we haven't done a good job of distinguishing between our work and
+Dynamo work ( especially highlighting the novelty part ) -  "Fixable via
+writing"
+4 - More points against InnoDB should be mentioned. Just summarizing by
+saying "space was a problem" is not sufficient.  - "Fixable via writing"
+4 (first paragraph) - What are the exact values for disk space overhead and
+latency impact that are acceptable? We can mention that we definitely don't
+want 2x disk space and sub-milliseconds latency requirements - "Fixable via
+writing"
+4* - What is " ... ETL scenarios " on p. 4? - "Fixable via writing" 
+4.1 - We say mmap-ing the file, but the reviewer got the feeling that the
+data was in HDFS. Figure 7 shows that the data got copied and used locally
+but in other places looks like its still on HDFS. - "Fixable via writing"
+4.1 - Is the md5(key) and data file ordered by the key? Yes it is, since
+while writing in Hadoop we write it in the data files in the same order as
+the index files - "Fixable via writing"
+4.1* - We mention that decreasing key space results in indirectly solving
+only the "multi-tenant" problem. He mentioned "problem of pressure on the
+page cache seems more to be a problem with the amount of data, not the
+number of tenants". He is absolutely correct here since the problem can
+exist in two scenarios (a) lots of stores [ we call it multi-tenant ] (b)
+the scenario we didn't face in LinkedIn ( and hence didn't mention ), but is
+possible - having less stores, but one of which has huge amounts of data. We
+should therefore just not restrict to saying "this solves the multi-tenant
+problem" - "Fixable via writing"
+4.1 - Unclear about chunk, chunk bucket and chunk files terminology. We
+should explain with examples instead of other way around. Another reviewer
+wrote "Your discussion of chunk buckets vs. chunk files vs. chunks is
+unclear- please clarify. I believe that you use "chunk" to refer to a chunk
+file, but other parts of the text cause me to question that assertion. Table
+1 and Table 2 seem to refer to the same "primary partition_replica id"
+entities with two different terms: chunk buckets (Table 1) and chunk files
+(Table 2). (The caption for Table 2 refers to chunk buckets.) It seems that
+you mean chunk bucket, where there are multiple chunk files per chunk
+bucket, named partition id_replica id_chunk id.{data,index}. I assume that
+chunk id's are within the <partition id, replica id> chunk bucket, right?  -
+"Fixable via writing"
+4.1 - Figure 4 - Please clarify what you intend to show with the bracket on
+the right side of the figure (a key-value pair), as well as delineate the
+region in the data file corresponding to a set of collided key-value pairs.
+- "Fixed via writing"
+4.1 - "Hadoop has successfully help scale out data generation", "Generation
+of multiple chunks file ...", "... perform well under large rations of data
+to RAM ratio." - "Fixed via writing"
+4.2 - Why did we use "symlink" instead of relying on "versioning file
+systems " ( eg - WAFL with snapshots ). Using systems like this is basically
+pushing the problem down the stack below now since these systems need
+"garbage collection" and use "logs" - if that was required we could have
+used BDB at the top level itself :) - "Fixable via writing"
+4.3 - "... that by having more chunks, once can increase ...." - "Fixable
+via writing"
+4.3 - We say the "mapper phase emits the upper 8 bytes of MD5 of the Spock
+key N times as the map phase key with the map phase value equal to a grouped
+tuple of node id, partition id, replica id, and the raw Spock key and
+value." The reviewer felt it means we're doing the generation for the N
+replicas of a chunk (bucket) N times, which seems like N-1 times too many.
+To clarify - "Fixed via writing"
+4.4 - Wants the discussion of collision handling in the fifth bullet of 4.4
+to be moved to Section 4.1 i.e. Storage format - "Fixable via writing"
+4.4 - Discussion of binary vs interpolation search doesn't answer the
+question of whether Spock's keys are uniformly distributed. They are since
+we MD5 our keys :) - "Fixable via writing"
+4.4* - What does R refer to in sec. 4.4 - "... depending on R" = "required
+reads" - "Fixable via writing"
+4.5 (last paragraph) - What happens when a node fails during the read-write
+lock? It would be nice to describe in more detail the ‘some form of
+two-phase commit’. I thought mentioning the fact that we rollback the data
+to the previous version during failures should be sufficient. Someone should
+re-phrase this huge sentence - "Fixable via writing"
+4.5 - "How do we handle long running queries which are still using older
+version of the data during the swap? Are they allowed to complete?" - Yes,
+of course. We use a read-write lock which allows all readers to finish
+before giving the writer lock.  "Are they allowed to complete with the
+version of the data they started with? (Or does your workload never
+exhibit queries that span data swaps?)" - We can only respond to queries on
+the previous version of the data. Only single versions are used for
+answering - "Fixed via writing"
+4.5 - Please provide references to Fast and Pegasus. - "Fixed via writing"
+4.6 - "I am confused about your "schema" and how it evolves. Each "store"
+corresponds to a database table, but why is an evolving schema an issue?
+Isn't the point of using JASON that you can extend easily the schema
+(versions)?" - With JSON we achieve only backwards compatibility. But we
+should also mention also mention that we can go beyond "evolving schemas"
+and can have a totally different schema by storing version numbers in the
+serialization - "Fixable via writing"
+4.6 - This line is fuzzy "pick up the corresponding schema" for the right
+version id. We should show an example - "Fixed via writing"
+4.7 -  Bullet (d) - Explain atomic swap - This has been done before in
+Section "Complete data cycle", but unfortunately the message is not clear.
+We should mention "as discussed in Section 4.5 - "Fixable via writing"
+4.7 - In Table 2 ( and hence Table 3 ), we move only one partition and show
+an imbalance. This was done just for example purposes so as to show only one
+partition being moved. In reality, I would never move ownership only of a
+single partition. Two options here (a) explain that this is only for example
+purposes that one partition is moved and hence has an imbalance (b) Move
+equal number of partitions over and remove imbalance, but make the example
+complicated.  - "Fixable via writing"
+4.7 - Does rebalancing process give the new node ownership of some of the
+partitions only for the recent version of data? - Very good point - "Yes".
+We cannot rollback the data post rebalancing since now. We should mention
+this - "Fixed via writing"
+5 - How does Spock's performance scale as a function of the number of
+replicas, N? Your evaluations don't really address this question - Figures
+10 and 11 only have a single node, Figure 12 only has a single replica, and
+Figure 13 has 2 replicas, but an indeterminate number of nodes. - We should
+mention the number of production boxes to solve this problem - "Fixed via
+writing"
+5 - If you can't provide the exact number of nodes for Figure 13, please
+clarify at least the order of magnitude. After Table 4 says that the largest
+cluster has 110 stores, you say that "Both the stores use N=2 and R=1." How
+many stores are there? What's R? - We should mention our largest cluster =
+the cluster for which Figure 13 is generated - "Fixed via writing"
+5 - In evaluation, be more explicit of what you mean by "build time"? I can
+infer that you talk about building the index, but I haven't noticed you
+explaining that anywhere - "Fixable via writing"
+5 - "Why do you compare only to MySQL? You also mentioned that you used
+BerkeleyDB Java Edition. Why didn't you show results for that configuration?
+IS BDB better/worse than MySQL and/or your solution?" - I feel the reviewer
+skipped the starting part of "Section 4" - This answers all the questions.
+Using berkeley DB for offline index construction is definitely possible
+except that it has the overhead of multiple data copies - "Fixed via
+writing"
+5.2 third paragraph - ‘relatively cached’ is vague, can you quantify more?
+What happens if the data is not cached after all in the system because of
+another process uses the buffer cache? Is there a way to detect that
+situation and control it? - There is a way to cache it (a) read the files
+manually during swap - thereby making swap slow (b) fadvise - which is again
+just "advise" - I think we should remove the words "relatively cached" -
+"Fixable via writing"
+5.2 - Figure 11 right graph 99th quantile -> 99th percentile.  - "Fixable
+via writing"
+5.2* - Figure 11 - RO -> Spock.
+
+
+==> Fixable via experiment ( possible )
+4.5 (last paragraph) - Very good point - "the swap operation takes a very
+short amount of time, but maybe a better measure for time to swap is the
+time it takes to get back to steady-state serving latencies, in terms of
+median, 99th percentile latency" - The difficulty here is how do you define
+"steady" again. One way to say that it is "steady" is by measuring the slope
+of descent and once its falls to a number close to previous stable state, we
+declare success. - "Fixable via experiment"
+5 - Some of the graphs plot median latency (Figure 10, 12), some plot
+average latency (Figure 13) - I think we should switch everything to median
+latency. RRD-tool allows you to calculate "median". So we should switch
+Figure 13 to median - "Fixable via experiment"
+5 - The reviewer wanted other 9xth percentiles as well for Figure 10,12 and
+13. Would require re-running all experiments again. I'll probably run one
+experiment, but I believe all the graphs will have the same shape and
+"stable slope" ( defined as measure for time to swap is the time it takes to
+get back to steady-state serving latencies ) - "Fixable via experiment"
+5.1 - Do put evaluations for latency on B+ tree - "Fixed via experiments"
+
+==> Fixable via experiment ( not possible )
+5 - Why didn't we compare against HBase? We actually do so in Section 2, but
+I believe the reviewer is looking for a more quantitative result. This might
+be a little time consuming to do, but not impossible - "Fixable by
+experiment but not in the timeframe"
+
+==> What else we should do? - Roshan's wish list
+- Run all the tests with some data-sets > 1 TB [ We need more boxes ]

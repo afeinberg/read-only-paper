@@ -20,8 +20,8 @@ shared-nothing cluster~\cite{sharednothing} databases similar to
 inserting into range partitioned tables in PNUTS~\cite{pnuts}, which
 tries to optimize data movement between machines and total transfer
 time by adding an extra planning phase to gather statistics and
-prepare the system for incoming workload. An extension of that
-work~\citet{pnutsbatch} uses Hadoop to batch insert data into PNUTS in
+prepare the system for incoming workload. In an extension of that
+work~\citet{pnutsbatch} Hadoop is used to batch insert data into PNUTS in
 the reduce phase. Both of these approaches optimize the time for data
 loading into the live system, but incur latency degradation on live
 serving due to multi-tenant issues with sharing CPU and memory during

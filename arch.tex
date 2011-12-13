@@ -113,7 +113,7 @@ clients.
 \label{sec:read_only}
 
 Before we started writing our own custom storage engine, we decided to
-evaluate currently available storage engines, MySQL and BDB, to see if
+evaluate currently available storage engines, MySQL and Berkeley DB, to see if
 they could fit our bulk loading use-case. Our criteria for success was
 the ability to bulk load data as fast as possible with minimum disk
 space overhead while still serving live traffic.
@@ -142,14 +142,15 @@ system as building the index on the serving system has isolation
 problems. To do so, we leveraged the fact that MyISAM allows copying
 of database files from another node into a live database directory;
 thereby automatically making it available for serving. We built a
-separate cluster where-in we would bulk load and then eventually copy
-the data over to the live cluster, but this requires an extra
-maintenance cost of a separate MySQL cluster with exactly the same
-number of nodes as the live one. Further, the lack of ability to load
-compressed data directly makes this process more time consuming, as
+separate cluster which we would bulk load to and then copy
+the resulting database files over to the live cluster. This two step 
+approach requires an extra maintenance cost of a separate MySQL 
+cluster with exactly the same number of nodes as the live one. 
+Further, the lack of ability to load compressed data in the bulk load
+phase makes it more time consuming since now
 the data is copied multiple times between nodes: once as a flat file
 to the bulk load cluster, then the internal copy during the \sql{LOAD}
-statement, and finally the raw data copy to the actual live database. 
+statement, and finally the raw database file copy to the actual live database. 
 
 The previous solution is not ideal due to its dependency on the
 redundant MySQL servers, which makes the complete process prone to
@@ -157,19 +158,19 @@ failure downtimes. Instead, what if we could use the inherent fault
 tolerance and parallelism of Hadoop and build individual
 node/partition level data stores which could be pulled over by
 \projectname{} for serving? The large-scale adoption of
-HDFS~\cite{hdfs} as the data sink for ETL scenarios makes it an ideal
+HDFS~\cite{hdfs} as the data sink for Extract, Transform, Load (ETL) pipelines makes it an ideal
 location to act as our source of data. The next attempted approach was
 to use Hadoop and a good single node high performance storage engine
 to generate smaller data stores in parallel. That is, a Hadoop job
-reads data from a source in HDFS, re-partitions on a per node basis,
-and finally writes the data to individual stores (for example, BDB) on
-the local filesystem in the reducer phase. The number of reducers were
-equal to the number of nodes, but could have easily been further split
+reads data from a source in HDFS, re-partitions it on a per node basis,
+and finally writes the data to individual stores (for example, Berkeley DB) on
+the local filesystem of the reducer phase Hadoop nodes. The number of reducers were
+equal to the number of \projectname{} nodes, but could have easily been further split
 on a per partition basis. This data is then read from the local
-filesystem and copied onto HDFS from where it can be read by
+filesystem and copied onto HDFS from where it can be fetched by
 \projectname{}. The benefits of this approach is that it leverages
 Hadoop's fault tolerance to build the indexes offline, but it suffers
-from an extra copy from the local file system the reducer nodes to
+from an extra copy from the local file system on the reducer nodes to
 HDFS---which can become a real bottleneck with terabytes of data. 
 
 From the above experiments we came to the conclusion that we required
@@ -300,7 +301,8 @@ of the preference list.
 An interesting optimization is that the full 16 bytes of the MD5 of
 the key is not necessary. We had initially started by using the full
 MD5 signature, but over time we noticed multi-tenant performance
-problems: stores were stamping on each others pages in the page cache.
+problems: pages of some stores were thrashed out of the page-cache due to 
+high throughput stores. 
 To alleviate this problem, we needed to cut down on the amount of data
 being memory mapped, which can be achieved by reducing the available
 key-space and accepting collisions in the data file. 
@@ -326,12 +328,12 @@ Instead, a compromise of 8 bytes (i.e. 64 bits) produces:
 \end{equation}
 The probability of more than one collision is even smaller. Thus, by
 decreasing the number of bytes of the MD5 of the key we were able to
-cut down the index size by 40\%, thereby making our clusters more
-multi-tenant. The size of the keys-space is an optional parameter the
-admin may set depending on the semantics of the data. Unfortunately,
-this came at the expense of us having to save the keys in the data
-file to use for lookups and handle the rare collisions in the data
-files.
+cut down the index size by 40\%, thereby making our clusters less prone to 
+thrashing due to high throughput stores. The size of the keys-space 
+is an optional parameter the admin may set depending on the semantics 
+of the data. Unfortunately, this came at the expense of us having 
+to save the keys in the data file to use for lookups and handle the 
+rare collisions in the data files.
 
 The data file is similarly a very highly packed structure where we
 store the number of collided tuples followed by a set of collided
@@ -464,7 +466,7 @@ Finally, every reducer is responsible for a single chunk,
 meaning that by having more chunks, once can increase
 the parallelism during the build phase. Since Hadoop automatically
 sorts the data based on the key in a reducer, the phase receives data in the
-order necessary for the index file and can a simple append 
+order necessary for the index file and can perform a simple append 
 to the index and data file on HDFS with no extra processing required.
 The data layout on HDFS is a directory on a per \projectname{} node
 basis, with the nomenclature of \term{node-\emph{id}}.
@@ -475,7 +477,7 @@ basis, with the nomenclature of \term{node-\emph{id}}.
 \label{sec:read_only:search}
 
 To find a key, the client generates the preference list and directs
-the request to the individual nodes, depending on $R$. 
+the request to the individual nodes, depending on ``required-reads''. 
 The following is a sketch of the algorithm to find the data once it
 reaches a particular node.
 
@@ -556,7 +558,7 @@ After the data is available on each respective node, \projectname{} must swap
 the new data-set with the older version. Finally after the fetch is
 complete, the driver triggers a swap operation on all nodes, which is
 co-ordinated via a read-write lock in the storage engine. Each node
-closes its current set of chunks, open its new set of chunks, and
+closes its current set of chunks, opens its new set of chunks, and
 memory maps the new index. On our largest cluster, described in Table~\ref{tab:production_statistics}, 
 this complete operation takes around 0.012 ms on average with the worst 
 swap time of around 0.050 ms. This is because no data reads are required 
@@ -627,14 +629,15 @@ moved
 \item Use intermediate cluster topology metadata to generate a set of
 steps that need to be run to finish rebalancing. In this process,
 \projectname{} must take care of all the secondary replica movements that might
-be required due to the primary partition movement. This plan is a set
+be required due to the primary partition movement. The plan generated is a set
 of donating node id and stealing node id pairs along with the chunk
 files being moved. 
 
-\item Initiate asynchronous processes (through the administrative
-service) on all the stealer nodes which then start stealing chunk
-files from their corresponding donor nodes. These nodes to go into a
-``rebalancing state'' and are thereby do not take any new data.
+\item Initiate asynchronous processes, (through the administrative
+service) on all the stealer nodes, which then start stealing chunk
+files from their corresponding donor nodes. During this copying the nodes
+go into a ``rebalancing state'' and are thereby not allowed to fetch any new 
+data. 
 			
 Here it is important to note that the granularity of the bucket
 selected makes this process as simple as copying files. If buckets
