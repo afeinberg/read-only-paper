@@ -59,6 +59,18 @@ mechanism'' layer, consisting of hinted handoff and read repair, is
 used only by read-write stores to bring the data back to a consistent
 state. 
 
+Read-repair is a ``lazy'' consistent mechanism, which works at read
+time: a key is read from multiple replicas (read quorum), and when an
+out-dated version of the key is found, it is written over with the
+most recent version (read from one or more of the other
+replicas). {\em Hinted handoff}, on the other hand, is a write-time store
+and forward mechanism: if a request to a particular node fails, the
+request is written to a special store (``slop'') on an arbitrary,
+with a hint indicating the original store, node, key, and value of the
+original request. Periodically, nodes holding the hints attempt to
+contact the original (failed) nodes (or their replacements), and if a
+connection is successfully establish, to replay the hints.
+
 The ``routing'' module deals with partitioning as well as replication.
 Our partitioning scheme is similar to Dynamo's, wherein
 \projectname{} splits the hash ring into equal size partitions and
