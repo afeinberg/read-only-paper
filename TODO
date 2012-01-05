@@ -14,23 +14,23 @@ keys every time- thereby making it infeasible to update individual tuples. -
 explicitly - "Fixed via writing"
 2 - Cite and contrast the related work “Large-scale Incremental Processing
 Using Distributed Transactions and Notiﬁcations”, OSDI 2010, a study of
-pushing incremental updates to a large data set.- "Fixable via writing"
+pushing incremental updates to a large data set.- "Fixable via writing" (*)
 3 - Technically "all" modules are not interchange-able. Most are...We should
 mention some examples ( routing ) - "Fixed via writing"
 3 - What is "hinted handoff" Please clarify what you mean by "hinted
-handoff".- "Fixed via writing"
+handoff".- "Fixed via writing" (*)
 3 - Why spend time describing server side routing ( Figure 4 is useless )
 while the rest of paper talks about client side routing? - "Fixed via
-writing"
+writing" (*)
 3 - Clearly mention what is used in RW and what is in RO  - "Fixed via
 writing"
 3 - Is there a 1:1 correspondent between nodes and (physical) machines? Yes,
-they mean the same - "Fixable via writing"
+they mean the same - "Fixable via writing" (*)
 3 - Figure 3 is about replica placement but not clearly mentioned  -
 "Fixable via writing"
 3 - Routing can be explained better in Section 3. In particular he didn't
 understand difference between server side and client side routing - "Fixable
-via writing"
+via writing" (*)
 3 - Feels we haven't done a good job of distinguishing between our work and
 Dynamo work ( especially highlighting the novelty part ) -  "Fixable via
 writing"
