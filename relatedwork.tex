@@ -40,8 +40,17 @@ This approach has also been extended to various databases.
 offline in Hadoop, then shipping them to HBase~\cite{hbase}, an
 open-source database modeled after BigTable~\cite{bigtable}. These
 works do not explore the data pipeline, particularly data refreshes
-and rollback. More importantly, since the data itself is immutable,
-\projectname{} makes optimizations at the storage layer level.
+and rollback. \citet{percolator} takes a hybrid approach that's
+between a traditional parallel RDBMS and a combination of a batch
+processing (e.g., Map/Reduce) and a distributed key-value store,
+implemented on top of BigTable~\cite{bigtable}; unlike
+\projectname{}, cross-row and cross-table ACID transactions are used
+for incremental updates.
+
+
+More importantly, since the data itself is immutable,
+\projectname{} makes optimizations at the storage layer
+level. 
 
 From an architecture perspective, \projectname{} has been inspired
 from various previous DHT storage systems. Unlike the previous DHT
