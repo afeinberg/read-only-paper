@@ -30,10 +30,10 @@ traffic with minimal additional latency.
 The product data cycle in this context consists of a continuous cycle
 of three phases: data collection, processing and finally serving. The
 data collection phase usually involves log ingestion, while the
-processing phase is a distributed parallel computing infrastructure.
-Interestingly, the nature of this cycle means live updates are not
-necessary and are difficult to handle, and that a batch
-update should complete quickly to engender frequent pushes.
+processing phase is executed on distributed parallel computing
+infrastructure.  Interestingly, the nature of this cycle means live
+updates are not necessary and are difficult to handle, and that a
+batch update should complete quickly to engender frequent pushes.
  
 \begin{figure}
 \centering
@@ -54,7 +54,7 @@ This paper presents read-only extensions to Project \projectname{},
 our open-source key-value solution for the final serving phase of this cycle, and
 discusses how it fits into our product ecosystem. \projectname{} is
 inspired by Dynamo~\cite{dynamo} and was initially designed to only
-support the fast online read/write load, but its extensible storage
+support low-latency online read/write workloads, but its extensible storage
 layer allowed us to quickly build our own custom read-only storage
 engine to integrate with the offline data cycle and support these
 batch-oriented use cases. At \linkedin, this system has been running
@@ -62,18 +62,19 @@ for over 2~years with our largest cluster loading around 3~TB of new
 data to the site every day. 
 
 As part of this cycle, we have access to an elastic pool of batch
-computing infrastructure with little to no latency requirements, which
-\projectname{} leverages to build its index and data files in Hadoop,
-thereby supporting high throughput for batch refreshes. The \projectname{} 
-infrastructure then provides excellent live serving performance for 
-this batch output--even during data refreshes. 
+computing infrastructure optimized for throughput rather latency, which
+\projectname{} leverages to build its index and data files using Hadoop MapReduce,
+thereby supporting efficient batch re-computations and refreshes. The \projectname{} 
+infrastructure then provides excellent live serving performance (i.e., high
+availability and low latency) for the batch output of the batch process--even 
+as the data is being refreshed.
 
 \longpage
 \projectname{} also supports instantaneous rollback, where data can be
-restored to a clean copy minimizing the time in error, which helps
-support fast, iterative development, especially necessary for new
-feature improvements. Finally, its data layout provides the ability to grow
-horizontally by rebalancing existing data to new nodes without down-time. 
+restored to a clean copy minimizing the time during which erroneous data is served, 
+which helps support fast, iterative development that is necessary for improving new
+features. Finally, its data layout provides the ability to expand a cluster
+horizontally by rebalancing existing data to new nodes without any down-time. 
 
 The key contributions of this work are:
 \begin{compactitem}
